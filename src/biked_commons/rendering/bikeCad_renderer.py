@@ -33,6 +33,14 @@ def one_hot_decode(bike: pd.Series) -> dict:
     return result
 
 
+class XmlTransformer:
+    def clip_to_xml(self, template_xml: str, clips_object: dict) -> str:
+        pass
+
+    def biked_to_xml(self, template_xml: str, biked_object: dict) -> str:
+        pass
+
+
 class RenderingService:
     def __init__(self,
                  renderer_pool_size: int,
@@ -49,15 +57,22 @@ class RenderingService:
                                             renderer_timeout_granularity=self._timeout_granularity))
 
     def render_object(self, bike_object, seed_bike_xml: str):
-        return self.render(self.cad_builder.build_cad_from_object(bike_object,
-                                                                  seed_bike_xml))
+        return self.render(self._bike_object_to_xml(bike_object, seed_bike_xml))
 
-    def render_clips(self, target_bike: dict):
-        xml_handler = self._build_xml_handler()
+    def render_clips(self, target_bike: dict, seed_bike_xml: str):
+        return self.render(self._clip_object_to_xml(target_bike, seed_bike_xml))
+
+    def _bike_object_to_xml(self, bike_object, seed_bike_xml):
+        return self.cad_builder.build_cad_from_object(bike_object,
+                                                      seed_bike_xml)
+
+    def _clip_object_to_xml(self, target_bike: dict, seed_bike_xml) -> str:
+        xml_handler = BikeXmlHandler()
+        xml_handler.set_xml(seed_bike_xml)
         target_dict = self._to_cad_dict(target_bike)
         self._update_values(xml_handler, target_dict)
         updated_xml = xml_handler.get_content_string()
-        return self.render(updated_xml)
+        return updated_xml
 
     def render(self, bike_xml: str):
         renderer = self._get_renderer()
@@ -68,11 +83,6 @@ class RenderingService:
 
     def _get_renderer(self):
         return self._renderer_pool.get(timeout=self._renderer_timeout / 2)
-
-    def _build_xml_handler(self):
-        xml_handler = BikeXmlHandler()
-        self._read_standard_bike_xml(xml_handler)
-        return xml_handler
 
     def _read_standard_bike_xml(self, handler):
         with open(resource_path(STANDARD_BIKE_RESOURCE)) as file:

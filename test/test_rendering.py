@@ -65,7 +65,7 @@ class RenderingTest(unittest.TestCase):
         self.assertImagesEqual(actual_result, "expected_standard_bike_img.svg")
 
     def test_render_clip(self):
-        actual_result = self.renderer.render_clips(SAMPLE_CLIPS_OBJECT)
+        actual_result = self.renderer.render_clips(SAMPLE_CLIPS_OBJECT, self.standard_bike_xml)
         self.assertImagesEqual(actual_result, "expected_clips_bike_img.svg")
 
     def assertImagesEqual(self, rendering_result, test_image_path: str):
