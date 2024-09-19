@@ -34,37 +34,15 @@ def one_hot_decode(bike: pd.Series) -> dict:
 
 
 class XmlTransformer:
+    def __init__(self):
+        self.cad_builder = BikeCadFileBuilder()
+
     def clip_to_xml(self, template_xml: str, clips_object: dict) -> str:
-        pass
+        return self._clip_object_to_xml(clips_object, template_xml)
 
     def biked_to_xml(self, template_xml: str, biked_object: dict) -> str:
-        pass
-
-
-class RenderingService:
-    def __init__(self,
-                 renderer_pool_size: int,
-                 renderer_timeout: int,
-                 timeout_granularity: int,
-                 cad_builder: BikeCadFileBuilder = BikeCadFileBuilder()):
-        os.makedirs(os.path.join(os.path.dirname(__file__), TEMP_DIR), exist_ok=True)
-        self._renderer_pool = queue.Queue(maxsize=renderer_pool_size)
-        self.cad_builder = cad_builder
-        self._renderer_timeout = renderer_timeout
-        self._timeout_granularity = timeout_granularity
-        for i in range(renderer_pool_size):
-            self._renderer_pool.put(BikeCad(renderer_timeout=self._renderer_timeout,
-                                            renderer_timeout_granularity=self._timeout_granularity))
-
-    def render_object(self, bike_object, seed_bike_xml: str):
-        return self.render(self._bike_object_to_xml(bike_object, seed_bike_xml))
-
-    def render_clips(self, target_bike: dict, seed_bike_xml: str):
-        return self.render(self._clip_object_to_xml(target_bike, seed_bike_xml))
-
-    def _bike_object_to_xml(self, bike_object, seed_bike_xml):
-        return self.cad_builder.build_cad_from_object(bike_object,
-                                                      seed_bike_xml)
+        return self.cad_builder.build_cad_from_object(biked_object,
+                                                      template_xml)
 
     def _clip_object_to_xml(self, target_bike: dict, seed_bike_xml) -> str:
         xml_handler = BikeXmlHandler()
@@ -73,20 +51,6 @@ class RenderingService:
         self._update_values(xml_handler, target_dict)
         updated_xml = xml_handler.get_content_string()
         return updated_xml
-
-    def render(self, bike_xml: str):
-        renderer = self._get_renderer()
-        result = renderer.render(bike_xml)
-        self._renderer_pool.put(renderer)  # This will never block as is - no new elements
-        # are ever added, so the pool will always have room for borrowed renderers.
-        return result
-
-    def _get_renderer(self):
-        return self._renderer_pool.get(timeout=self._renderer_timeout / 2)
-
-    def _read_standard_bike_xml(self, handler):
-        with open(resource_path(STANDARD_BIKE_RESOURCE)) as file:
-            handler.set_xml(file.read())
 
     def _to_cad_dict(self, bike: dict):
         bike_complete = clips_to_cad(pd.DataFrame.from_records([bike])).iloc[0]
@@ -135,6 +99,43 @@ class RenderingService:
         return {
             k: v for k, v in bike_dict.items() if k not in to_delete
         }
+
+
+class RenderingService:
+    def __init__(self,
+                 renderer_pool_size: int,
+                 renderer_timeout: int,
+                 timeout_granularity: int,
+                 cad_builder: BikeCadFileBuilder = BikeCadFileBuilder()):
+        os.makedirs(os.path.join(os.path.dirname(__file__), TEMP_DIR), exist_ok=True)
+        self._renderer_pool = queue.Queue(maxsize=renderer_pool_size)
+        self.cad_builder = cad_builder
+        self._renderer_timeout = renderer_timeout
+        self._timeout_granularity = timeout_granularity
+        self._xml_transformer = XmlTransformer()
+        for i in range(renderer_pool_size):
+            self._renderer_pool.put(BikeCad(renderer_timeout=self._renderer_timeout,
+                                            renderer_timeout_granularity=self._timeout_granularity))
+
+    def render_object(self, bike_object, seed_bike_xml: str):
+        return self.render(self._xml_transformer.biked_to_xml(seed_bike_xml, bike_object))
+
+    def render_clips(self, target_bike: dict, seed_bike_xml: str):
+        return self.render(self._xml_transformer.clip_to_xml(seed_bike_xml, target_bike))
+
+    def render(self, bike_xml: str):
+        renderer = self._get_renderer()
+        result = renderer.render(bike_xml)
+        self._renderer_pool.put(renderer)  # This will never block as is - no new elements
+        # are ever added, so the pool will always have room for borrowed renderers.
+        return result
+
+    def _get_renderer(self):
+        return self._renderer_pool.get(timeout=self._renderer_timeout / 2)
+
+    def _read_standard_bike_xml(self, handler):
+        with open(resource_path(STANDARD_BIKE_RESOURCE)) as file:
+            handler.set_xml(file.read())
 
 
 class BikeCad:
