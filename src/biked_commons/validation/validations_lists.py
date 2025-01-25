@@ -3,6 +3,8 @@ from typing import Callable, List
 import numpy as np
 import pandas as pd
 
+from biked_commons.validation.validation_result import ValidationResult
+
 __MULTIPLIER = 1000
 
 # TODO: grab all validations from biked/functions
@@ -29,14 +31,18 @@ __CLIPS_VALIDATIONS_RAW = [
 
 
 def _wrap_function(validation_function: Callable):
-    def wrapped_function(designs: pd.DataFrame):
+    def wrapped_function(designs: pd.DataFrame) -> ValidationResult:
         try:
             validation_result = validation_function(designs).astype("int32")
             print(f"Validation result: fraction invalid [{np.sum(validation_result) / len(designs)}]")
-            return validation_result
+            return ValidationResult(per_design_result=pd.DataFrame(validation_result, columns=["invalid"]),
+                                    encountered_exception=False)
         except KeyError as e:
             print(f"Validation function failed {e}...")
-            return pd.DataFrame(np.zeros(shape=(len(designs), 1)))
+            zeros = np.zeros(shape=(len(designs), 1))
+            # TODO: should we be assuming that when a function fails, the issue is with the function?
+            return ValidationResult(per_design_result=pd.DataFrame(zeros, columns=["invalid"]),
+                                    encountered_exception=True)
 
     return wrapped_function
 
