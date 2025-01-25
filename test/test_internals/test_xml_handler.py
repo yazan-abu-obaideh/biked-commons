@@ -3,7 +3,7 @@ from biked_commons.xml_handling.algebraic_parser import AlgebraicParser
 import unittest
 import os
 
-file_path = os.path.join(os.path.dirname(__file__), "resources/test.xml")
+file_path = os.path.join(os.path.dirname(__file__), "../resources/test.xml")
 
 
 class XmlHandlerTest(unittest.TestCase):

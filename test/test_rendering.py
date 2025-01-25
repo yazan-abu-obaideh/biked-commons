@@ -2,7 +2,7 @@ import unittest
 
 from biked_commons.rendering.bikeCad_renderer import RenderingService
 from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
-from utils_for_tests import test_resource_path
+from utils_for_tests import path_of_test_resource
 
 SAMPLE_BIKE_OBJECT = {
     "Crank length": 169.98547990908648, "DT Length": 679.9341705346619, "HT Angle": 72.5,
@@ -70,11 +70,11 @@ class RenderingTest(unittest.TestCase):
 
     def assertImagesEqual(self, rendering_result, test_image_path: str):
         try:
-            with open(test_resource_path(test_image_path), "rb") as image_file:
+            with open(path_of_test_resource(test_image_path), "rb") as image_file:
                 self.assertEqual(rendering_result, image_file.read())
         except Exception as e:
             failed_image_path = test_image_path.replace(".svg", "_failed.svg")
             print(f"An exception occurred. Writing failed rendering result to file: {failed_image_path}")
-            with open(test_resource_path(failed_image_path), "wb") as failed_image_result:
+            with open(path_of_test_resource(failed_image_path), "wb") as failed_image_result:
                 failed_image_result.write(rendering_result)
             self.fail(e)
