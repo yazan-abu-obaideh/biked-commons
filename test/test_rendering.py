@@ -1,6 +1,6 @@
 import unittest
 
-from biked_commons.rendering.bikeCad_renderer import RenderingService
+from biked_commons.api.rendering import SingleThreadedRenderer
 from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
 from utils_for_tests import path_of_test_resource
 
@@ -50,23 +50,21 @@ SAMPLE_CLIPS_OBJECT = {"CS textfield": 420.0, "BB textfield": 60.006180256298634
 
 class RenderingTest(unittest.TestCase):
     def setUp(self):
-        self.renderer = RenderingService(renderer_pool_size=1,
-                                         renderer_timeout=30,
-                                         timeout_granularity=1)
+        self.renderer = SingleThreadedRenderer()
         with open(resource_path(STANDARD_BIKE_RESOURCE), "r") as file:
             self.standard_bike_xml = file.read()
 
     def test_render_biked(self):
-        actual_result = self.renderer.render_object(SAMPLE_BIKE_OBJECT, self.standard_bike_xml)
-        self.assertImagesEqual(actual_result, "expected_render_biked.svg")
+        actual_result = self.renderer.render_biked(SAMPLE_BIKE_OBJECT)
+        self.assertImagesEqual(actual_result.image_bytes, "expected_render_biked.svg")
 
     def test_render_bike_xml_file(self):
-        actual_result = self.renderer.render(self.standard_bike_xml)
-        self.assertImagesEqual(actual_result, "expected_standard_bike_img.svg")
+        actual_result = self.renderer.render_xml(self.standard_bike_xml)
+        self.assertImagesEqual(actual_result.image_bytes, "expected_standard_bike_img.svg")
 
     def test_render_clip(self):
-        actual_result = self.renderer.render_clips(SAMPLE_CLIPS_OBJECT, self.standard_bike_xml)
-        self.assertImagesEqual(actual_result, "expected_clips_bike_img.svg")
+        actual_result = self.renderer.render_clip(SAMPLE_CLIPS_OBJECT)
+        self.assertImagesEqual(actual_result.image_bytes, "expected_clips_bike_img.svg")
 
     def assertImagesEqual(self, rendering_result: bytes, test_image_path: str):
         try:
