@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 
 __MULTIPLIER = 1000
+
+# TODO: grab all validations from biked/functions
+
 __COMBINED_VALIDATIONS_RAW = [
     lambda df: df["Saddle height"] < (df["ST Length"] * __MULTIPLIER) + 40,
     lambda df: df["Saddle height"] > ((df["ST Length"] * __MULTIPLIER) + df["Seatpost LENGTH"] + 30),
