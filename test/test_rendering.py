@@ -68,7 +68,7 @@ class RenderingTest(unittest.TestCase):
         actual_result = self.renderer.render_clips(SAMPLE_CLIPS_OBJECT, self.standard_bike_xml)
         self.assertImagesEqual(actual_result, "expected_clips_bike_img.svg")
 
-    def assertImagesEqual(self, rendering_result, test_image_path: str):
+    def assertImagesEqual(self, rendering_result: bytes, test_image_path: str):
         try:
             with open(path_of_test_resource(test_image_path), "rb") as image_file:
                 self.assertEqual(rendering_result, image_file.read())
