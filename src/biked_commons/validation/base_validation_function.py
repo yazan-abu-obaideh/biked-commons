@@ -1,5 +1,7 @@
 from abc import abstractmethod, ABC
 
+import pandas as pd
+
 
 class ValidationFunction(ABC):
     @abstractmethod

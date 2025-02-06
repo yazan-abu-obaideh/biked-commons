@@ -1,16 +1,6 @@
-from abc import ABC, abstractmethod
-
 import pandas as pd
 
-
-class ValidationFunction(ABC):
-    @abstractmethod
-    def friendly_name(self) -> str:
-        pass
-
-    @abstractmethod
-    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        pass
+from biked_commons.validation.base_validation_function import ValidationFunction
 
 
 class DisallowedNegativeValues(ValidationFunction):
@@ -21,60 +11,7 @@ class DisallowedNegativeValues(ValidationFunction):
         raise Exception("Unimplemented function!")
 
 
-class SeatPostTooShort(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Seat post too short"
-
-    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        length_ = (designs["Seat tube length"] + designs["Seatpost LENGTH"] + 30)
-        return designs["Saddle height"] > length_
-
-
-class FrontWheelOuterDiameter(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Front wheel outer diameter smaller than rim outer diameter"
-
-    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        # noinspection PyTypeChecker
-        return designs["Wheel diameter front"] < designs["BSD front"]
-
-
-class RearWheelOuterDiameter(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Rear wheel outer diameter smaller than rim outer diamter"
-
-    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        # noinspection PyTypeChecker
-        return designs["Wheel diameter rear"] < designs["BSD rear"]
-
-
-class RearSpokes(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Rear spokes too short"
-
-    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        rear_ = (designs["BSD rear"] - designs["Rim depth rear"] * 2)
-        return rear_ > designs["ERD rear"]
-
-
-class FrontSpokes(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Front spokes too short"
-
-    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        front_ = (designs["BSD front"] - designs["Rim depth front"] * 2)
-        return front_ > designs["ERD front"]
-
-
-class RearSpokesTooLong(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Rear spokes too long"
-
-    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        # noinspection PyTypeChecker
-        return designs["Wheel diameter rear"] < designs["ERD rear"]
-
-
+# TODO: add FDERD, RDERD, FDBSD, RDBSD, CS textfield to that list
 _MANDATORY_POSITIVE = ['CS textfield', 'Stack', 'Head angle',
                        'Head tube length textfield', 'Seat tube length',
                        'Seat angle', 'DT Length', 'BB diameter', 'ttd', 'dtd', 'csd', 'ssd',

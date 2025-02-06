@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 
 from biked_commons.validation.base_validation_function import ValidationFunction
@@ -98,3 +99,41 @@ class CheckHtlxHtux(ValidationFunction):
         extension_ = designs["Head tube upper extension2"] + designs["Head tube lower extension2"]
         # noinspection PyTypeChecker
         return extension_ >= designs["Head tube length textfield"]
+
+
+class CheckDownTubeReachesHeadTubeJunction(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "Down tube too short to reach head tube junction"
+
+    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
+        Stack = designs["Stack"]
+        HTL = designs["Head tube length textfield"]
+        HTLX = designs["Head tube lower extension2"]
+        HTA = designs["Head angle"] * np.pi / 180
+        DTL = designs["DT Length"]
+        # TODO: check that this is correct
+        DTJY = (Stack - (HTL - HTLX) * np.sin(HTA))
+        return np.logical_and(HTA < np.pi / 2, (DTJY ** 2 >= DTL ** 2))
+
+
+class CheckDownTubeIntersectsFrontWheel(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "Down tube intersects Front Wheel"
+
+    def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
+        Stack = designs["Stack"]
+        HTL = designs["Head tube length textfield"]
+        HTLX = designs["Head tube lower extension2"]
+        HTA = designs["Head angle"] * np.pi / 180
+        DTL = designs["DT Length"]
+        BBD = designs["BB textfield"]
+        DTJY = Stack - (HTL - HTLX) * np.sin(HTA)
+        DTJX = np.sqrt(DTL ** 2 - DTJY ** 2)
+        FWX = DTJX + (DTJY - BBD) / np.tan(HTA)
+        FCD = np.sqrt(FWX ** 2 + BBD ** 2)
+        FBSD = designs["BSD front"]
+        DTOD = STOD = designs["Down tube diameter"]
+
+        ang = np.arctan2(DTJY, DTJX) - np.arctan2(BBD, FWX)
+        return np.logical_and(ang < np.pi / 2,
+                              np.sin(ang) * FCD < FBSD / 2 - DTOD)
