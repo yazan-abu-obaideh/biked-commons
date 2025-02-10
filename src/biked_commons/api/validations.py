@@ -22,16 +22,20 @@ __RAW_VALIDATION_FUNCTIONS: List[ValidationFunction] = [member[1]() for member i
 
 
 # noinspection PyPep8Naming
-def validate_raw_BikeCad(designs: pd.DataFrame, verbose=False):
+def validate_raw_BikeCad(designs: pd.DataFrame, verbose=False) -> List[ValidationResult]:
     results = []
     for validation_function in __RAW_VALIDATION_FUNCTIONS:
         try:
             res = validation_function.validate(designs)
-            results.append(ValidationResult(per_design_result=res, encountered_exception=False))
+            results.append(ValidationResult(
+                validation_name=validation_function.friendly_name(),
+                per_design_result=res, encountered_exception=False))
             if verbose:
                 print(f"Validation function [{validation_function.friendly_name()}] ran successfully")
         except Exception as e:
             print(f"Validation function [{validation_function.friendly_name()}] encountered exception [{e}]")
             res = pd.DataFrame(np.ones(shape=(len(designs), 1)))
-            results.append(ValidationResult(per_design_result=res, encountered_exception=True))
+            results.append(ValidationResult(
+                validation_name=validation_function.friendly_name(),
+                per_design_result=res, encountered_exception=True))
     return results

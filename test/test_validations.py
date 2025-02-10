@@ -24,17 +24,22 @@ class ValidationsTest(unittest.TestCase):
         data = self._generate_data()
         validation_results = validate_raw_BikeCad(data, verbose=True)
 
-        failed = []
-        self.assertEqual(0, len(failed), f"Some validations failed")
+        encountered_exceptions = []
+        self.assertEqual(0, len(encountered_exceptions), f"Some validations failed")
         incorrect_dimensions = []
         for index, result in enumerate(validation_results):
             if result.encountered_exception:
-                failed.append(result)
+                encountered_exceptions.append(result)
             if result.per_design_result.shape != (10,):
                 incorrect_dimensions.append(result)
 
-        self.assertEqual(0, len(failed), f"Some validations failed")
-        self.assertEqual(0, len(incorrect_dimensions), f"Some results have the wrong dimensions")
+        self.assertEqual(0, len(encountered_exceptions),
+                         "Some validations encountered exceptions: "
+                         f"{[res.validation_name for res in encountered_exceptions]}")
+        self.assertEqual(0, len(incorrect_dimensions),
+                         "Some results have the wrong dimensions: "
+                         f"{[res.validation_name for res in incorrect_dimensions]}"
+                         )
 
     def _generate_data(self):
         handler = BikeXmlHandler()
