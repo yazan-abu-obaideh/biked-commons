@@ -132,7 +132,7 @@ class CheckDownTubeIntersectsFrontWheel(ValidationFunction):
         FWX = DTJX + (DTJY - BBD) / np.tan(HTA)
         FCD = np.sqrt(FWX ** 2 + BBD ** 2)
         FBSD = designs["BSD front"]
-        DTOD = STOD = designs["Down tube diameter"]
+        DTOD = designs["Down tube diameter"]
 
         ang = np.arctan2(DTJY, DTJX) - np.arctan2(BBD, FWX)
         return np.logical_and(ang < np.pi / 2,

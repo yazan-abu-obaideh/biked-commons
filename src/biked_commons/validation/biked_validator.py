@@ -1,6 +1,5 @@
 from typing import List
 
-import attrs
 import pandas as pd
 
 from biked_commons.validation.validation_result import ValidationResult

@@ -29,9 +29,9 @@ def validate_raw_BikeCad(designs: pd.DataFrame, verbose=False):
             res = validation_function.validate(designs)
             results.append(ValidationResult(per_design_result=res, encountered_exception=False))
             if verbose:
-                print(validation_function.friendly_name() + " ran successfully")
+                print(f"Validation function [{validation_function.friendly_name()}] ran successfully")
         except Exception as e:
-            print(f"Validation function {validation_function.friendly_name()} encountered exception {e}")
+            print(f"Validation function [{validation_function.friendly_name()}] encountered exception [{e}]")
             res = pd.DataFrame(np.ones(shape=(len(designs), 1)))
             results.append(ValidationResult(per_design_result=res, encountered_exception=True))
     return results
