@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import pandas as pd
 
@@ -137,3 +139,20 @@ class CheckDownTubeIntersectsFrontWheel(ValidationFunction):
         ang = np.arctan2(DTJY, DTJX) - np.arctan2(BBD, FWX)
         return np.logical_and(ang < np.pi / 2,
                               np.sin(ang) * FCD < FBSD / 2 - DTOD)
+
+
+RAW_VALIDATION_FUNCTIONS: List[ValidationFunction] = [
+    SeatPostTooShort(),
+    FrontWheelOuterDiameter(),
+    RearWheelOuterDiameter(),
+    RearSpokes(),
+    FrontSpokes(),
+    RearSpokesTooLong(),
+    BsdSmaller(),
+    BsdSmallerFront(),
+    FrontSpokesTooLong(),
+    CheckHtlx(),
+    CheckHtlxHtux(),
+    CheckDownTubeReachesHeadTubeJunction(),
+    CheckDownTubeIntersectsFrontWheel(),
+]

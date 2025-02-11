@@ -1,41 +1,17 @@
-import inspect
 from typing import List
 
-import numpy as np
 import pandas as pd
 
-from biked_commons.validation import simple_validation_functions
-from biked_commons.validation.base_validation_function import ValidationFunction
+from biked_commons.validation.base_validation_function import validate_designs
+from biked_commons.validation.clip_validation_functions import CLIPS_VALIDATIONS
+from biked_commons.validation.raw_validation_functions import RAW_VALIDATION_FUNCTIONS
 from biked_commons.validation.validation_result import ValidationResult
 
 
-def is_subclass(o):
-    is_abstract_base_class = o is ValidationFunction
-    if is_abstract_base_class:
-        return False
-    return inspect.isclass(o) and issubclass(o, ValidationFunction)
-
-
-__RAW_VALIDATION_FUNCTIONS: List[ValidationFunction] = [member[1]() for member in
-                                                        inspect.getmembers(simple_validation_functions,
-                                                                           predicate=is_subclass)]
-
-
 # noinspection PyPep8Naming
-def validate_raw_BikeCad(designs: pd.DataFrame, verbose=False) -> List[ValidationResult]:
-    results = []
-    for validation_function in __RAW_VALIDATION_FUNCTIONS:
-        try:
-            res = validation_function.validate(designs)
-            results.append(ValidationResult(
-                validation_name=validation_function.friendly_name(),
-                per_design_result=res, encountered_exception=False))
-            if verbose:
-                print(f"Validation function [{validation_function.friendly_name()}] ran successfully")
-        except Exception as e:
-            print(f"Validation function [{validation_function.friendly_name()}] encountered exception [{e}]")
-            res = pd.DataFrame(np.ones(shape=(len(designs), 1)))
-            results.append(ValidationResult(
-                validation_name=validation_function.friendly_name(),
-                per_design_result=res, encountered_exception=True))
-    return results
+def validate_raw_BikeCad(designs: pd.DataFrame) -> List[ValidationResult]:
+    return validate_designs(RAW_VALIDATION_FUNCTIONS, designs)
+
+
+def validate_clip(designs: pd.DataFrame) -> List[ValidationResult]:
+    return validate_designs(CLIPS_VALIDATIONS, designs)
