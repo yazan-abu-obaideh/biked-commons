@@ -9,7 +9,7 @@ from biked_commons.validation.raw_validation_functions import RAW_VALIDATION_FUN
 from biked_commons.validation.validation_result import ValidationResult
 
 
-def get_representation(dataframe: pd.DataFrame) -> Representation:
+def infer_representation(dataframe: pd.DataFrame) -> Representation:
     pass
 
 

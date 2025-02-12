@@ -7,6 +7,8 @@ import pandas as pd
 from biked_commons.validation.validation_result import ValidationResult
 
 
+# TODO: write validation functions to [optionally] be able to grab values from the default bike when not found?
+
 class ValidationFunction(ABC):
     @abstractmethod
     def friendly_name(self) -> str:
