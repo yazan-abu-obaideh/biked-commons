@@ -23,7 +23,7 @@ jobs:
       - name: Install biked-commons
         run: pip install .;
       - name: run tests
-        run: python3 -m unittest discover -v;
+        run: PYTHONPATH=test python3 -m unittest discover test  -v ;
 
   publish_build:
     if: github.event_name == 'release'
