@@ -11,7 +11,7 @@ class SeatPostTooShort(ValidationFunction):
         return "Seat post too short"
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        return designs["Saddle height"] > (designs["Seat tube length"] + designs["Seatpost LENGTH"] + 30)
+        return (designs["Seat tube length"] + designs["Seatpost LENGTH"] + 30) - designs["Saddle height"]
 
 
 class FrontWheelOuterDiameter(ValidationFunction):
@@ -20,7 +20,7 @@ class FrontWheelOuterDiameter(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["Wheel diameter front"] < designs["BSD front"]
+        return designs["Wheel diameter front"] - designs["BSD front"]
 
 
 class RearWheelOuterDiameter(ValidationFunction):
@@ -29,7 +29,7 @@ class RearWheelOuterDiameter(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["Wheel diameter rear"] < designs["BSD rear"]
+        return designs["Wheel diameter rear"] - designs["BSD rear"]
 
 
 class RearSpokes(ValidationFunction):
@@ -37,7 +37,7 @@ class RearSpokes(ValidationFunction):
         return "Rear spokes too short"
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        return (designs["BSD rear"] - designs["Rim depth rear"] * 2) > designs["ERD rear"]
+        return designs["ERD rear"] - (designs["BSD rear"] - designs["Rim depth rear"] * 2)
 
 
 class FrontSpokes(ValidationFunction):
@@ -45,7 +45,7 @@ class FrontSpokes(ValidationFunction):
         return "Front spokes too short"
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        return (designs["BSD front"] - designs["Rim depth front"] * 2) > designs["ERD front"]
+        return designs["ERD front"] - (designs["BSD front"] - designs["Rim depth front"] * 2)
 
 
 class RearSpokesTooLong(ValidationFunction):
@@ -54,7 +54,7 @@ class RearSpokesTooLong(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["Wheel diameter rear"] < designs["ERD rear"]
+        return designs["Wheel diameter rear"] - designs["ERD rear"]
 
 
 class BsdSmaller(ValidationFunction):
@@ -63,7 +63,7 @@ class BsdSmaller(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["BSD rear"] < designs["ERD rear"]
+        return designs["BSD rear"] - designs["ERD rear"]
 
 
 class BsdSmallerFront(ValidationFunction):
@@ -72,7 +72,7 @@ class BsdSmallerFront(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["BSD front"] < designs["ERD front"]
+        return designs["BSD front"] - designs["ERD front"]
 
 
 class FrontSpokesTooLong(ValidationFunction):
@@ -81,7 +81,7 @@ class FrontSpokesTooLong(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["Wheel diameter front"] < designs["ERD front"]
+        return designs["Wheel diameter front"] - designs["ERD front"]
 
 
 class CheckHtlx(ValidationFunction):
@@ -90,7 +90,7 @@ class CheckHtlx(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["Head tube lower extension2"] >= designs["Head tube length textfield"]
+        return designs["Head tube length textfield"] - designs["Head tube lower extension2"]
 
 
 class CheckHtlxHtux(ValidationFunction):
@@ -100,7 +100,7 @@ class CheckHtlxHtux(ValidationFunction):
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         extension_ = designs["Head tube upper extension2"] + designs["Head tube lower extension2"]
         # noinspection PyTypeChecker
-        return extension_ >= designs["Head tube length textfield"]
+        return designs["Head tube length textfield"] - extension_
 
 
 class CheckDownTubeReachesHeadTubeJunction(ValidationFunction):

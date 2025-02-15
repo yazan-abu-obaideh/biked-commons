@@ -10,7 +10,7 @@ class SaddleHeightTooSmall(ValidationFunction):
         return "Saddle height too small"
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        return designs["Saddle height"] < (designs["Seat tube length"] + 40)
+        return designs["Saddle height"] - (designs["Seat tube length"] + 40)
 
 
 class SaddleHeightTooGreat(ValidationFunction):
@@ -18,7 +18,7 @@ class SaddleHeightTooGreat(ValidationFunction):
         return "Saddle height too great"
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        return designs["Saddle height"] > (designs["Seat tube length"] + designs["Seatpost LENGTH"] + 30)
+        return (designs["Seat tube length"] + designs["Seatpost LENGTH"] + 30) - designs["Saddle height"]
 
 
 class BsdRearTooSmall(ValidationFunction):
@@ -27,7 +27,7 @@ class BsdRearTooSmall(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["BSD rear"] < designs["ERD rear"]
+        return designs["BSD rear"] - designs["ERD rear"]
 
 
 class BsdFrontTooSmall(ValidationFunction):
@@ -36,7 +36,7 @@ class BsdFrontTooSmall(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["BSD front"] < designs["ERD front"]
+        return designs["BSD front"] - designs["ERD front"]
 
 
 class HeadTubeLowerExtensionTooGreat(ValidationFunction):
@@ -45,7 +45,7 @@ class HeadTubeLowerExtensionTooGreat(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return designs["Head tube lower extension2"] >= designs["Head tube length textfield"]
+        return designs["Head tube length textfield"] - designs["Head tube lower extension2"]
 
 
 class HeadTubeLengthTooGreat(ValidationFunction):
@@ -54,8 +54,8 @@ class HeadTubeLengthTooGreat(ValidationFunction):
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
         # noinspection PyTypeChecker
-        return (designs["Head tube upper extension2"] + designs["Head tube lower extension2"]) >= designs[
-            'Head tube length textfield']
+        return designs['Head tube length textfield'] - (
+                designs["Head tube upper extension2"] + designs["Head tube lower extension2"])
 
 
 class ChainStayLessThanZero(ValidationFunction):
@@ -63,7 +63,7 @@ class ChainStayLessThanZero(ValidationFunction):
         return "Chain stay less than zero"
 
     def validate(self, designs: pd.DataFrame) -> pd.DataFrame:
-        return designs["CS textfield"] <= 0
+        return 0 - designs["CS textfield"]
 
 
 CLIPS_VALIDATIONS: List[ValidationFunction] = [
