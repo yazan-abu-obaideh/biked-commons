@@ -46,7 +46,7 @@ def _build_bike_path(seed_bike_id):
 
 
 class BikeCadFileBuilder:
-    def build_cad_from_object(self, bike_object, seed_bike_xml: str) -> str:
+    def build_cad_from_biked(self, bike_object, seed_bike_xml: str) -> str:
         xml_handler = BikeXmlHandler()
         xml_handler.set_xml(seed_bike_xml)
         for response_key, cad_key in OPTIMIZED_TO_CAD.items():

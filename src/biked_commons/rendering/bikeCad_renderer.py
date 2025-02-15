@@ -41,8 +41,8 @@ class XmlTransformer:
         return self._clip_object_to_xml(clips_object, template_xml)
 
     def biked_to_xml(self, template_xml: str, biked_object: dict) -> str:
-        return self.cad_builder.build_cad_from_object(biked_object,
-                                                      template_xml)
+        return self.cad_builder.build_cad_from_biked(biked_object,
+                                                     template_xml)
 
     def _clip_object_to_xml(self, target_bike: dict, seed_bike_xml) -> str:
         xml_handler = BikeXmlHandler()
@@ -66,7 +66,6 @@ class XmlTransformer:
             if parsed is not None:
                 num_updated += 1
                 self._update_value(parsed, handler, k)
-        print(f"{num_updated=}")
 
     def _parse(self, v):
         handled = self._handle_numeric(v)
@@ -74,7 +73,6 @@ class XmlTransformer:
         return handled
 
     def _update_value(self, handled, xml_handler, k):
-        print(f"Updating {k} with value {handled}")
         xml_handler.add_or_update(k, handled)
 
     def _handle_numeric(self, v):
@@ -94,7 +92,6 @@ class XmlTransformer:
         for k, _ in bike_dict.items():
             for encoded_key in ONE_HOT_ENCODED_CLIPS_COLUMNS:
                 if "OHCLASS" in k and encoded_key in k:
-                    print(f"Deleting key {k}")
                     to_delete.append(k)
         return {
             k: v for k, v in bike_dict.items() if k not in to_delete
