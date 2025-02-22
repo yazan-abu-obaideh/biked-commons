@@ -79,7 +79,6 @@ class BikeCadFileBuilder:
         for k, _ in bike_dict.items():
             for encoded_key in ONE_HOT_ENCODED_CLIPS_COLUMNS:
                 if "OHCLASS" in k and encoded_key in k:
-                    print(f"Deleting key {k}")
                     to_delete.append(k)
         return {
             k: v for k, v in bike_dict.items() if k not in to_delete
@@ -92,7 +91,6 @@ class BikeCadFileBuilder:
             if parsed is not None:
                 num_updated += 1
                 self._update_value(parsed, handler, k)
-        print(f"{num_updated=}")
 
     def _parse(self, v):
         handled = self._handle_numeric(v)
@@ -100,7 +98,6 @@ class BikeCadFileBuilder:
         return handled
 
     def _update_value(self, handled, xml_handler, k):
-        print(f"Updating {k} with value {handled}")
         xml_handler.add_or_update(k, handled)
 
     def _handle_numeric(self, v):
