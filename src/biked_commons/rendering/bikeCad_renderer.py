@@ -12,7 +12,7 @@ from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
 from biked_commons.xml_handling.cad_builder import BikeCadFileBuilder
 
 TEMP_DIR = "bikes"
-BIKE_CAD_PATH = os.path.join(os.path.dirname(__file__), '..', 'resources', 'ConsoleBikeCAD.jar')
+BIKE_CAD_PATH = resource_path("ConsoleBikeCAD.jar")
 
 LOGGER_NAME = "BikeCadLogger"
 
