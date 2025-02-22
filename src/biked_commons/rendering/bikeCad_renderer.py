@@ -52,7 +52,7 @@ class RenderingService:
         return self._renderer_pool.get(timeout=self._renderer_timeout / 2)
 
     def _read_standard_bike_xml(self, handler):
-        with open(resource_path(STANDARD_BIKE_RESOURCE)) as file:
+        with open(STANDARD_BIKE_RESOURCE) as file:
             handler.set_xml(file.read())
 
 

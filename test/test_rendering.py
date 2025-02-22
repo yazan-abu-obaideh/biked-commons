@@ -1,9 +1,9 @@
 import unittest
+from difflib import SequenceMatcher
 
 from biked_commons.api.rendering import SingleThreadedRenderer
-from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
+from biked_commons.resource_utils import STANDARD_BIKE_RESOURCE
 from utils_for_tests import path_of_test_resource
-from difflib import SequenceMatcher
 
 SAMPLE_BIKE_OBJECT = {
     "Crank length": 169.98547990908648, "DT Length": 679.9341705346619, "HT Angle": 72.5,
@@ -52,7 +52,7 @@ SAMPLE_CLIPS_OBJECT = {"CS textfield": 420.0, "BB textfield": 60.006180256298634
 class RenderingTest(unittest.TestCase):
     def setUp(self):
         self.renderer = SingleThreadedRenderer()
-        with open(resource_path(STANDARD_BIKE_RESOURCE), "r") as file:
+        with open(STANDARD_BIKE_RESOURCE, "r") as file:
             self.standard_bike_xml = file.read()
 
     def test_render_biked(self):
