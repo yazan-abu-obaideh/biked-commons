@@ -2,11 +2,10 @@ import os
 
 import pandas as pd
 
-from biked_commons.rendering.one_hot_clips import ONE_HOT_ENCODED_CLIPS_COLUMNS
-from biked_commons.xml_handling.bike_xml_handler import BikeXmlHandler
 from biked_commons.cad_services.clips_to_bcad import clips_to_cad
 from biked_commons.exceptions import UserInputException
-from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
+from biked_commons.rendering.one_hot_clips import ONE_HOT_ENCODED_CLIPS_COLUMNS
+from biked_commons.xml_handling.bike_xml_handler import BikeXmlHandler
 
 OPTIMIZED_TO_CAD = {
     "ST Angle": "Seat angle",
@@ -54,20 +53,12 @@ class BikeCadFileBuilder:
         # self._update_xml(xml_handler, "Display RIDER", "true")
         return xml_handler.get_content_string()
 
-    def build_cad_from_clips_object(self, target_bike) -> str:
-        xml_handler = self._build_xml_handler()
+    def build_cad_from_clips_object(self, target_bike, seed_bike_xml: str) -> str:
+        xml_handler = BikeXmlHandler()
+        xml_handler.set_xml(seed_bike_xml)
         target_dict = self._to_cad_dict(target_bike)
         self._update_values(xml_handler, target_dict)
         return xml_handler.get_content_string()
-
-    def _build_xml_handler(self):
-        xml_handler = BikeXmlHandler()
-        self._read_standard_bike_xml(xml_handler)
-        return xml_handler
-
-    def _read_standard_bike_xml(self, handler):
-        with open(resource_path(STANDARD_BIKE_RESOURCE)) as file:
-            handler.set_xml(file.read())
 
     def _to_cad_dict(self, bike: dict):
         bike_complete = clips_to_cad(pd.DataFrame.from_records([bike])).iloc[0]

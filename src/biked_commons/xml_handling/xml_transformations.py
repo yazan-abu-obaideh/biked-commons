@@ -18,7 +18,8 @@ class XmlTransformer:
         self.cad_builder = BikeCadFileBuilder()
 
     def clip_to_xml(self, template_xml: str, clips_object: dict) -> str:
-        return self.cad_builder.build_cad_from_clips_object(clips_object)
+        return self.cad_builder.build_cad_from_clips_object(clips_object,
+                                                            template_xml)
 
     def biked_to_xml(self, template_xml: str, biked_object: dict) -> str:
         return self.cad_builder.build_cad_from_biked(biked_object,
