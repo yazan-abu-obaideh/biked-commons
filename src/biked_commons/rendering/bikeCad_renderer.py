@@ -7,14 +7,10 @@ import threading
 import uuid
 from asyncio import subprocess
 
-import pandas as pd
-
 from biked_commons.cad_services.cad_builder import BikeCadFileBuilder
-from biked_commons.cad_services.clips_to_bcad import clips_to_cad
 from biked_commons.exceptions import InternalError
-from biked_commons.rendering.one_hot_clips import ONE_HOT_ENCODED_CLIPS_COLUMNS
 from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
-from biked_commons.xml_handling.bike_xml_handler import BikeXmlHandler
+from biked_commons.xml_handling.xml_transformations import XmlTransformer
 
 TEMP_DIR = "bikes"
 BIKE_CAD_PATH = os.path.join(os.path.dirname(__file__), '..', 'resources', 'ConsoleBikeCAD.jar')
@@ -22,80 +18,6 @@ BIKE_CAD_PATH = os.path.join(os.path.dirname(__file__), '..', 'resources', 'Cons
 LOGGER_NAME = "BikeCadLogger"
 
 WINDOWS = "Windows"
-
-
-def one_hot_decode(bike: pd.Series) -> dict:
-    result = {}
-    for encoded_value in ONE_HOT_ENCODED_CLIPS_COLUMNS:
-        for column in bike.index:
-            if encoded_value in column and bike[column] == 1:
-                result[encoded_value] = column.split('OHCLASS:')[1].strip()
-    return result
-
-
-class XmlTransformer:
-    def __init__(self):
-        self.cad_builder = BikeCadFileBuilder()
-
-    def clip_to_xml(self, template_xml: str, clips_object: dict) -> str:
-        return self._clip_object_to_xml(clips_object, template_xml)
-
-    def biked_to_xml(self, template_xml: str, biked_object: dict) -> str:
-        return self.cad_builder.build_cad_from_biked(biked_object,
-                                                     template_xml)
-
-    def _clip_object_to_xml(self, target_bike: dict, seed_bike_xml) -> str:
-        xml_handler = BikeXmlHandler()
-        xml_handler.set_xml(seed_bike_xml)
-        target_dict = self._to_cad_dict(target_bike)
-        self._update_values(xml_handler, target_dict)
-        updated_xml = xml_handler.get_content_string()
-        return updated_xml
-
-    def _to_cad_dict(self, bike: dict):
-        bike_complete = clips_to_cad(pd.DataFrame.from_records([bike])).iloc[0]
-        decoded_values = one_hot_decode(bike_complete)
-        bike_dict = bike_complete.to_dict()
-        bike_dict.update(decoded_values)
-        return self._remove_encoded_values(bike_dict)
-
-    def _update_values(self, handler, bike_dict):
-        num_updated = 0
-        for k, v in bike_dict.items():
-            parsed = self._parse(v)
-            if parsed is not None:
-                num_updated += 1
-                self._update_value(parsed, handler, k)
-
-    def _parse(self, v):
-        handled = self._handle_numeric(v)
-        handled = self._handle_bool(str(handled))
-        return handled
-
-    def _update_value(self, handled, xml_handler, k):
-        xml_handler.add_or_update(k, handled)
-
-    def _handle_numeric(self, v):
-        if str(v).lower() == 'nan':
-            return None
-        if type(v) in [int, float]:
-            v = int(v)
-        return v
-
-    def _handle_bool(self, param):
-        if param.lower().title() in ['True', 'False']:
-            return param.lower()
-        return param
-
-    def _remove_encoded_values(self, bike_dict: dict) -> dict:
-        to_delete = []
-        for k, _ in bike_dict.items():
-            for encoded_key in ONE_HOT_ENCODED_CLIPS_COLUMNS:
-                if "OHCLASS" in k and encoded_key in k:
-                    to_delete.append(k)
-        return {
-            k: v for k, v in bike_dict.items() if k not in to_delete
-        }
 
 
 class RenderingService:
