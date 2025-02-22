@@ -7,7 +7,7 @@ import threading
 import uuid
 from asyncio import subprocess
 
-from biked_commons.cad_services.cad_builder import BikeCadFileBuilder
+from biked_commons.xml_handling.xml_transformations import BikeCadFileBuilder
 from biked_commons.exceptions import InternalError
 from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
 from biked_commons.xml_handling.xml_transformations import XmlTransformer

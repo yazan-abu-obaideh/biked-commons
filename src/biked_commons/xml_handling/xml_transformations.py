@@ -1,6 +1,6 @@
 import pandas as pd
 
-from biked_commons.cad_services.cad_builder import BikeCadFileBuilder
+from biked_commons.xml_handling.cad_builder import BikeCadFileBuilder
 from biked_commons.rendering.one_hot_clips import ONE_HOT_ENCODED_CLIPS_COLUMNS
 
 

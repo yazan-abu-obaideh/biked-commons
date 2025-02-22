@@ -2,10 +2,10 @@ import os
 
 import pandas as pd
 
-from biked_commons.cad_services.clips_to_bcad import clips_to_cad
 from biked_commons.exceptions import UserInputException
 from biked_commons.rendering.one_hot_clips import ONE_HOT_ENCODED_CLIPS_COLUMNS
 from biked_commons.xml_handling.bike_xml_handler import BikeXmlHandler
+from biked_commons.xml_handling.clips_to_bcad import clips_to_cad
 
 OPTIMIZED_TO_CAD = {
     "ST Angle": "Seat angle",
