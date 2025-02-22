@@ -1,9 +1,9 @@
 from abc import abstractmethod, ABC
-from typing import List, Dict
+from typing import List
 
-import numpy as np
 import pandas as pd
 import torch
+
 
 # from biked_commons.validation.validation_result import ValidationResult
 
@@ -32,7 +32,6 @@ class ValidationFunction(ABC):
         The values in the tensor represent validity. 1 is invalid, 0 is valid.
         """
         pass
-
 
 
 # def validate_designs(validation_functions: List[ValidationFunction],
@@ -64,6 +63,7 @@ def construct_tensor_validator(validation_functions: List[ValidationFunction], c
     Returns:
         A function that takes a PyTorch tensor of designs and returns a PyTorch tensor of validation results.
     """
+
     def validate_tensor(designs: torch.Tensor) -> torch.Tensor:
         """
         Applies the validation functions to the given tensor and returns a tensor of results.
@@ -87,7 +87,7 @@ def construct_tensor_validator(validation_functions: List[ValidationFunction], c
             try:
                 # Get the indices of the required variables for this function
                 var_indices = [column_names.index(var) for var in validation_function.variable_names()]
-                
+
                 # Extract the relevant slices from the tensor
                 sliced_designs = designs[:, var_indices]
 
@@ -115,6 +115,7 @@ def construct_dataframe_validator(validation_functions: List[ValidationFunction]
     Returns:
         A function that takes a Pandas DataFrame of designs and returns a DataFrame of validation results.
     """
+
     # First, construct the tensor-based validator (this one doesn't need column mapping)
     def validate_dataframe(designs: pd.DataFrame) -> pd.DataFrame:
         """
@@ -139,11 +140,10 @@ def construct_dataframe_validator(validation_functions: List[ValidationFunction]
         # Convert results back to a DataFrame
         results_df = pd.DataFrame(
             results_tensor.numpy(),  # Convert tensor to NumPy
-            columns=[vf.friendly_name() for vf in validation_functions], 
+            columns=[vf.friendly_name() for vf in validation_functions],
             index=designs.index  # Preserve original index
         )
 
         return results_df
 
     return validate_dataframe
-

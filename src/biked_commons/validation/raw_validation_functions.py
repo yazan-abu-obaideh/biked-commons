@@ -1,7 +1,9 @@
-import torch
-import math
 from typing import List
-from base_validation_function import ValidationFunction
+
+import torch
+
+from biked_commons.validation.base_validation_function import ValidationFunction
+
 
 class SeatPostTooShort(ValidationFunction):
     def friendly_name(self) -> str:

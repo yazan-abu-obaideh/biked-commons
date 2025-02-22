@@ -2,6 +2,5 @@ import unittest
 
 
 class CommonsEndToEndTest(unittest.TestSuite):
-    def test_rendering(self):
-        def test_rendering_1():
-            pass
+    def test_optimize_and_render_clip(self):
+        pass

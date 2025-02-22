@@ -1,6 +1,6 @@
 from typing import List
 import torch
-from base_validation_function import ValidationFunction
+from biked_commons.validation.base_validation_function import ValidationFunction
 
 class SaddleHeightTooSmall(ValidationFunction):
     def friendly_name(self) -> str:
