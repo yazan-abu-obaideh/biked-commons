@@ -1,8 +1,5 @@
-import os
-
 import pandas as pd
 
-from biked_commons.exceptions import UserInputException
 from biked_commons.rendering.one_hot_clips import ONE_HOT_ENCODED_CLIPS_COLUMNS
 from biked_commons.xml_handling.bike_xml_handler import BikeXmlHandler
 from biked_commons.xml_handling.clips_to_bcad import clips_to_cad
@@ -24,28 +21,8 @@ OPTIMIZED_TO_CAD = {
 }
 
 
-def one_hot_decode(bike: pd.Series) -> dict:
-    result = {}
-    for encoded_value in ONE_HOT_ENCODED_CLIPS_COLUMNS:
-        for column in bike.index:
-            if encoded_value in column and bike[column] == 1:
-                result[encoded_value] = column.split('OHCLASS:')[1].strip()
-    return result
-
-
-def _get_valid_seed_bike(seed_image_id):
-    if str(seed_image_id) not in [str(_) for _ in range(1, 14)]:
-        raise UserInputException(f"Invalid seed bike ID [{seed_image_id}]")
-    return f"bike{seed_image_id}.bcad"
-
-
-def _build_bike_path(seed_bike_id):
-    seed_image = _get_valid_seed_bike(seed_bike_id)
-    return os.path.join(os.path.dirname(__file__), "../resources", "seed-bikes", seed_image)
-
-
 class BikeCadFileBuilder:
-    def build_cad_from_biked(self, bike_object, seed_bike_xml: str) -> str:
+    def build_cad_from_biked(self, bike_object: dict, seed_bike_xml: str) -> str:
         xml_handler = BikeXmlHandler()
         xml_handler.set_xml(seed_bike_xml)
         for response_key, cad_key in OPTIMIZED_TO_CAD.items():
@@ -53,7 +30,7 @@ class BikeCadFileBuilder:
         # self._update_xml(xml_handler, "Display RIDER", "true")
         return xml_handler.get_content_string()
 
-    def build_cad_from_clips_object(self, target_bike, seed_bike_xml: str) -> str:
+    def build_cad_from_clips_object(self, target_bike: dict, seed_bike_xml: str) -> str:
         xml_handler = BikeXmlHandler()
         xml_handler.set_xml(seed_bike_xml)
         target_dict = self._to_cad_dict(target_bike)
@@ -62,7 +39,7 @@ class BikeCadFileBuilder:
 
     def _to_cad_dict(self, bike: dict):
         bike_complete = clips_to_cad(pd.DataFrame.from_records([bike])).iloc[0]
-        decoded_values = one_hot_decode(bike_complete)
+        decoded_values = self._one_hot_decode(bike_complete)
         bike_dict = bike_complete.to_dict()
         bike_dict.update(decoded_values)
         return self._remove_encoded_values(bike_dict)
@@ -111,3 +88,11 @@ class BikeCadFileBuilder:
         if param.lower().title() in ['True', 'False']:
             return param.lower()
         return param
+
+    def _one_hot_decode(self, bike: pd.Series) -> dict:
+        result = {}
+        for encoded_value in ONE_HOT_ENCODED_CLIPS_COLUMNS:
+            for column in bike.index:
+                if encoded_value in column and bike[column] == 1:
+                    result[encoded_value] = column.split('OHCLASS:')[1].strip()
+        return result
