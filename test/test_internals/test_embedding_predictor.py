@@ -1,8 +1,7 @@
-import os.path
 import unittest
 
-import pandas as pd
 import numpy.testing as np_test
+import pandas as pd
 from sklearn.metrics import r2_score
 
 from biked_commons.bike_embedding.clip_embedding_calculator import ClipEmbeddingCalculatorImpl
