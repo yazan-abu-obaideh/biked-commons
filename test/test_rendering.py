@@ -25,7 +25,7 @@ class RenderingTest(unittest.TestCase):
 
     def test_render_biked(self):
         actual_result = self.renderer.render_biked(SAMPLE_BIKE_OBJECT)
-        self.assertImagesEqual(actual_result.image_bytes, "expected_render_biked.svg")
+        self.assertImagesEqual(actual_result.image_bytes, "expected_standard_bike_img.svg")
 
     def test_render_bike_xml_file(self):
         actual_result = self.renderer.render_xml(self.standard_bike_xml)
@@ -47,6 +47,7 @@ class RenderingTest(unittest.TestCase):
                     similar_enough = SequenceMatcher(None, result_str, result_str).ratio()
                 # differences in screen size can affect rendering result.
                 # this workaround eliminates that for now.
+                print(f"{similar_enough=}")
                 self.assertGreater(similar_enough, 0.9999999999)
 
         except Exception as e:
