@@ -11,8 +11,12 @@ class CombinedRepresentationTest(unittest.TestCase):
     def test_no_shared_keys(self):
         first = pd.DataFrame.from_records([{"A": 17} for _ in range(13)])
         second = pd.DataFrame.from_records([{"B": 19} for _ in range(13)])
-        representation = CombinedRepresentation([DatasetDescription.from_data(data) for data in [first, second]])
+        representation = CombinedRepresentation({
+            "first": DatasetDescription.from_data(first),
+            "second": DatasetDescription.from_data(second)
+        })
         self.assertEqual(13, len(representation.data))
+        self.assertEqual({"A", "B"}, set(representation.get_data().columns))
         self.assertTrue((17 == representation.data["A"]).all())
         self.assertTrue((19 == representation.data["B"]).all())
 
@@ -24,7 +28,8 @@ class CombinedRepresentationTest(unittest.TestCase):
                 Conversion(
                     name="C-in-first",
                     master_name="C-in-master",
-                    conversion_function=lambda x: x
+                    conversion_function=lambda x: x / 10,
+                    inverse_conversion_function=lambda x: x * 10
                 )
             ]
         )
@@ -32,12 +37,47 @@ class CombinedRepresentationTest(unittest.TestCase):
             Conversion(
                 name="C-in-second",
                 master_name="C-in-master",
-                conversion_function=lambda x: x / 1000
+                conversion_function=lambda x: x,
+                inverse_conversion_function=lambda x: x
             )
         ])
-        representation = CombinedRepresentation([first_description, second_description])
-
-        print("***")
-        print(representation.data)
+        representation = CombinedRepresentation(
+            {"first": first_description,
+             "second": second_description
+             }
+        )
 
         self.assertEqual(13, len(representation.data))
+        self.assertEqual({"A", "B", "C-in-master"}, set(representation.data.columns))
+        self.assertTrue((17 == representation.data["A"]).all())
+        self.assertTrue((19 == representation.data["B"]).all())
+        self.assertTrue((1.3 == representation.data["C-in-master"]).all())
+
+    def test_get_as_representation(self):
+        first = pd.DataFrame.from_records([{"A": 17, "C-in-first": 13} for _ in range(13)])
+        second = pd.DataFrame.from_records([{"B": 19, "C-in-second": 1301} for _ in range(13)])
+        first_description = DatasetDescription(
+            first, [
+                Conversion(
+                    name="C-in-first",
+                    master_name="C-in-master",
+                    conversion_function=lambda x: x / 10,
+                    inverse_conversion_function=lambda x: x * 10
+                )
+            ]
+        )
+        second_description = DatasetDescription(second, conversions=[
+            Conversion(
+                name="C-in-second",
+                master_name="C-in-master",
+                conversion_function=lambda x: x,
+                inverse_conversion_function=lambda x: x
+            )
+        ])
+        representation = CombinedRepresentation({
+            "first": first_description,
+            "second": second_description
+        })
+
+        self.assertEqual({"A", "C-in-first"}, set(representation.get_as_representation("first").columns))
+        self.assertEqual({"B", "C-in-second"}, set(representation.get_as_representation("second").columns))
