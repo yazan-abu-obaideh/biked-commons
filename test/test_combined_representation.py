@@ -8,6 +8,8 @@ from biked_commons.combined_representation.combined_representation import Combin
 from biked_commons.combined_representation.merging import DuplicateColumnRemovalStrategy, \
     DuplicateColumnRemovalStrategies, RowMergeStrategy, RowMergeStrategies
 
+SHOULD_BE_CLEANED = "Description has not been cleaned. This could lead to memory issues."
+
 
 class CombinedRepresentationTest(unittest.TestCase):
 
@@ -124,6 +126,5 @@ class CombinedRepresentationTest(unittest.TestCase):
                                                 row_merge_strategy=row_merge_strategy
                                                 )
         for desc in representation._id_to_description.values():
-            self.assertTrue(desc.has_been_cleaned(),
-                            "Description has not been cleaned. This could lead to memory issues.")
+            self.assertTrue(desc.has_been_cleaned(), SHOULD_BE_CLEANED)
         return representation
