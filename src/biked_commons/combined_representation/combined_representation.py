@@ -21,7 +21,8 @@ class DatasetDescription:
 
     def get_data(self, copy=True) -> pd.DataFrame:
         if self._cleaned:
-            raise Exception("Get data should not be called after calling 'clean'")
+            raise Exception(
+                "Get data should not be called after calling 'clean'")
         if copy:
             return self.__data.copy(deep=True)
         return self.__data
@@ -30,8 +31,15 @@ class DatasetDescription:
         return self._cleaned
 
     def clean(self) -> None:
-        self.__data = pd.DataFrame()  # empty
+        self.__data = pd.DataFrame()
         self._cleaned = True
+
+
+def copy_description(description: DatasetDescription) -> DatasetDescription:
+    return DatasetDescription(
+        data=description.get_data(),
+        conversions=description.conversions,
+    )
 
 
 class CombinedRepresentation:
@@ -40,9 +48,11 @@ class CombinedRepresentation:
                  column_removal_strategy: DuplicateColumnRemovalStrategy = DuplicateColumnRemovalStrategies.KEEP_FIRST,
                  row_merge_strategy: RowMergeStrategy = RowMergeStrategies.IGNORE
                  ):
-        self._id_to_description: Dict[str, DatasetDescription] = id_to_description
+        self._id_to_description = {
+            _id: copy_description(description) for _id, description in id_to_description.items()
+        }
         self._merged_data: pd.DataFrame = self._merge_representations(column_removal_strategy, row_merge_strategy)
-        self._clean_descriptions(id_to_description)
+        self._clean_descriptions()
 
     def get_data(self, copy=True) -> pd.DataFrame:
         if copy:
@@ -76,6 +86,6 @@ class CombinedRepresentation:
             start_data.drop(labels=[conversion.name], axis=1, inplace=True)
         return start_data
 
-    def _clean_descriptions(self, id_to_description: Dict[str, DatasetDescription]):
-        for desc in id_to_description.values():
+    def _clean_descriptions(self):
+        for desc in self._id_to_description.values():
             desc.clean()
