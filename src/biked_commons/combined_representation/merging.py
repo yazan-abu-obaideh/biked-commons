@@ -1,4 +1,5 @@
 import abc
+from functools import reduce
 from typing import List
 
 import pandas as pd
@@ -41,6 +42,14 @@ class _IgnoreRows(RowMergeStrategy):
         return merged_data
 
 
+class _StrictIntersection(RowMergeStrategy):
+
+    def merge_rows(self, merged_data: pd.DataFrame, original_data: List[pd.DataFrame]) -> pd.DataFrame:
+        sets = [set(data.index) for data in original_data]
+        intersection = reduce(set.intersection, sets)
+        return pd.DataFrame(merged_data, index=list(intersection))
+
+
 class DuplicateColumnRemovalStrategies:
     KEEP_FIRST = _KeepFirst()
     IGNORE = _IgnoreColumns()
@@ -48,3 +57,4 @@ class DuplicateColumnRemovalStrategies:
 
 class RowMergeStrategies:
     IGNORE = _IgnoreRows()
+    STRICT_INTERSECTION = _StrictIntersection()

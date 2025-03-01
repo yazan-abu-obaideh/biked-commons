@@ -4,7 +4,7 @@ from typing import Dict
 import pandas as pd
 
 from biked_commons.combined_representation.combined_representation import CombinedRepresentation, DatasetDescription, \
-    Conversion
+    Conversion, DEFAULT_ROW_MERGE_STRATEGY, DEFAULT_COLUMN_DUPLICATION_STRATEGY
 from biked_commons.combined_representation.merging import DuplicateColumnRemovalStrategy, \
     DuplicateColumnRemovalStrategies, RowMergeStrategy, RowMergeStrategies
 
@@ -80,9 +80,44 @@ class CombinedRepresentationTest(unittest.TestCase):
         self.assertEqual(len(merged), 10)
         self.assertEqual(["A", "B", "C"], list(merged.columns))
 
+    def test_row_merge_strategy_no_intersection(self):
+        first_data = pd.DataFrame.from_records(data=[{"A": 15} for _ in range(10)],
+                                               index=[i for i in range(10, 20)])
+        second_data = pd.DataFrame.from_records(data=[{"B": 15} for _ in range(10)],
+                                                index=[i for i in range(10)])
+        descriptions = {
+            "first": DatasetDescription.from_data(first_data),
+            "second": DatasetDescription.from_data(second_data),
+        }
+        representation = self.build_representation(descriptions,
+                                                   row_merge_strategy=RowMergeStrategies.STRICT_INTERSECTION)
+        self.assertEqual(len(representation.get_data()), 0)
+        self.assertEqual(len(representation.get_as_representation("first")), 0)
+        self.assertEqual(len(representation.get_as_representation("second")), 0)
+
+    def test_row_merge_strategy_some_intersection(self):
+        first_data = pd.DataFrame.from_records(data=[{"A": 15} for _ in range(10)],
+                                               index=[i for i in range(10)])
+        second_data = pd.DataFrame.from_records(data=[{"B": 15} for _ in range(10)],
+                                                index=[i for i in range(3, 13)])
+        third_data = pd.DataFrame.from_records(data=[{"C": 15} for _ in range(10)],
+                                               index=[i for i in range(6, 16)])
+        descriptions = {
+            "first": DatasetDescription.from_data(first_data),
+            "second": DatasetDescription.from_data(second_data),
+            "third": DatasetDescription.from_data(third_data),
+        }
+        representation = self.build_representation(descriptions,
+                                                   row_merge_strategy=RowMergeStrategies.STRICT_INTERSECTION)
+        self.assertEqual(len(representation.get_data()), 4)
+        self.assertEqual(set(representation.get_data().index), {6, 7, 8, 9})
+        self.assertEqual(set(representation.get_as_representation("first").index), {6, 7, 8, 9})
+        self.assertEqual(set(representation.get_as_representation("second").index), {6, 7, 8, 9})
+        self.assertEqual(set(representation.get_as_representation("third").index), {6, 7, 8, 9})
+
     def build_representation(self, id_to_description: Dict[str, DatasetDescription],
-                             column_removal_strategy: DuplicateColumnRemovalStrategy = DuplicateColumnRemovalStrategies.KEEP_FIRST,
-                             row_merge_strategy: RowMergeStrategy = RowMergeStrategies.IGNORE
+                             column_removal_strategy: DuplicateColumnRemovalStrategy = DEFAULT_COLUMN_DUPLICATION_STRATEGY,
+                             row_merge_strategy: RowMergeStrategy = DEFAULT_ROW_MERGE_STRATEGY
                              ) -> CombinedRepresentation:
         representation = CombinedRepresentation(id_to_description,
                                                 column_removal_strategy=column_removal_strategy,
