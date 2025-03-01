@@ -1,1 +1,1 @@
-recursive-include ./src/biked_commons/resources *
+recursive-include ./src/resources *

@@ -1,7 +1,7 @@
 import attrs
 
 from biked_commons.rendering.bikeCad_renderer import RenderingService
-from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
+from biked_commons.resource_utils import STANDARD_BIKE_RESOURCE
 
 
 @attrs.define(frozen=True)
@@ -20,7 +20,7 @@ class SingleThreadedRenderer:
         self.renderer = RenderingService(renderer_pool_size=1,
                                          renderer_timeout=renderer_timeout_seconds,
                                          timeout_granularity=timeout_granularity_seconds)
-        with open(resource_path(STANDARD_BIKE_RESOURCE), "r") as file:
+        with open(STANDARD_BIKE_RESOURCE, "r") as file:
             self.standard_bike_xml = file.read()
 
     def render_xml(self, bike_xml: str) -> RenderingResult:

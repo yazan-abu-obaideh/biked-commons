@@ -3,3 +3,8 @@
 **/generated/
 **/biked_commons.egg-info/
 **/build/
+**/__pycache__/
+**/BikeCAD_17.1_configuration/
+**/META-INF/
+**/temp.jar
+src/biked_commons/rendering/bikes/

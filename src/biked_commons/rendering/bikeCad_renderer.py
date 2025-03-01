@@ -7,13 +7,12 @@ import threading
 import uuid
 from asyncio import subprocess
 
-from biked_commons.xml_handling.xml_transformations import BikeCadFileBuilder
 from biked_commons.exceptions import InternalError
 from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
-from biked_commons.xml_handling.xml_transformations import XmlTransformer
+from biked_commons.xml_handling.cad_builder import BikeCadFileBuilder
 
 TEMP_DIR = "bikes"
-BIKE_CAD_PATH = os.path.join(os.path.dirname(__file__), '..', 'resources', 'ConsoleBikeCAD.jar')
+BIKE_CAD_PATH = resource_path("ConsoleBikeCAD.jar")
 
 LOGGER_NAME = "BikeCadLogger"
 
@@ -31,16 +30,16 @@ class RenderingService:
         self.cad_builder = cad_builder
         self._renderer_timeout = renderer_timeout
         self._timeout_granularity = timeout_granularity
-        self._xml_transformer = XmlTransformer()
+        self._xml_transformer = BikeCadFileBuilder()
         for i in range(renderer_pool_size):
             self._renderer_pool.put(BikeCad(renderer_timeout=self._renderer_timeout,
                                             renderer_timeout_granularity=self._timeout_granularity))
 
     def render_object(self, bike_object, seed_bike_xml: str):
-        return self.render(self._xml_transformer.biked_to_xml(seed_bike_xml, bike_object))
+        return self.render(self._xml_transformer.build_cad_from_biked(bike_object, seed_bike_xml))
 
     def render_clips(self, target_bike: dict, seed_bike_xml: str):
-        return self.render(self._xml_transformer.clip_to_xml(seed_bike_xml, target_bike))
+        return self.render(self._xml_transformer.build_cad_from_clips_object(target_bike, seed_bike_xml))
 
     def render(self, bike_xml: str):
         renderer = self._get_renderer()
@@ -53,7 +52,7 @@ class RenderingService:
         return self._renderer_pool.get(timeout=self._renderer_timeout / 2)
 
     def _read_standard_bike_xml(self, handler):
-        with open(resource_path(STANDARD_BIKE_RESOURCE)) as file:
+        with open(STANDARD_BIKE_RESOURCE) as file:
             handler.set_xml(file.read())
 
 

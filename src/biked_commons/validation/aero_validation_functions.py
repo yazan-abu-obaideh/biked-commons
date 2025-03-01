@@ -1,19 +1,16 @@
-from typing import List
-
-import pandas as pd
-import torch
 import math
-
-# from biked_commons.validation.base_validation_function import ValidationFunction
-from base_validation_function import ValidationFunction
+from typing import List
 
 import torch
-from typing import List
+
+from base_validation_function import ValidationFunction
 
 __EPS__ = 1e-6
 
+
 def law_of_cos(a, b, c):
-    return (a**2 + b**2 - c**2) / (2 * a * b)
+    return (a ** 2 + b ** 2 - c ** 2) / (2 * a * b)
+
 
 class SaddleTooFarFromPedals(ValidationFunction):
     def friendly_name(self) -> str:
@@ -24,9 +21,10 @@ class SaddleTooFarFromPedals(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         ul, ll, hip_x, hip_y, crank_length = designs[:, :len(self.variable_names())].T
-        Lspl = torch.sqrt(hip_x**2 + hip_y**2) + crank_length
+        Lspl = torch.sqrt(hip_x ** 2 + hip_y ** 2) + crank_length
         return Lspl - (ul + ll)
-    
+
+
 class SaddleTooFarFromHandles(ValidationFunction):
     def friendly_name(self) -> str:
         return "Saddle too far from handles"
@@ -37,7 +35,8 @@ class SaddleTooFarFromHandles(ValidationFunction):
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         arm, back, hip_x, hip_y, hand_x, hand_y = designs[:, :len(self.variable_names())].T
         Lsh = torch.sqrt((hip_x + hand_x) ** 2 + (hip_y - hand_y) ** 2)
-        return Lsh - (arm + back)  
+        return Lsh - (arm + back)
+
 
 class SaddleTooCloseToPedals(ValidationFunction):
     def friendly_name(self) -> str:
@@ -48,9 +47,10 @@ class SaddleTooCloseToPedals(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         lower_leg, upper_leg, hip_x, hip_y, crank_length = designs[:, :len(self.variable_names())].T
-        min_saddle_to_pedal = torch.sqrt(hip_x**2 + hip_y**2) - crank_length
+        min_saddle_to_pedal = torch.sqrt(hip_x ** 2 + hip_y ** 2) - crank_length
         min_hip_to_foot = torch.abs(lower_leg - upper_leg)
         return min_hip_to_foot - min_saddle_to_pedal
+
 
 class HipAngleUnderNDegrees(ValidationFunction):
     def __init__(self, n: float = 10):
@@ -60,10 +60,12 @@ class HipAngleUnderNDegrees(ValidationFunction):
         return f"Hip angle under {self.n} degrees"
 
     def variable_names(self) -> List[str]:
-        return ["hip_x", "hip_y", "hand_x", "hand_y", "torso_length", "arm_length", "crank_length", "lower_leg", "upper_leg"]
+        return ["hip_x", "hip_y", "hand_x", "hand_y", "torso_length", "arm_length", "crank_length", "lower_leg",
+                "upper_leg"]
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
-        hip_x, hip_y, hand_x, hand_y, torso_length, arm_length, crank_length, lower_leg, upper_leg = designs[:, :len(self.variable_names())].T
+        hip_x, hip_y, hand_x, hand_y, torso_length, arm_length, crank_length, lower_leg, upper_leg = designs[:, :len(
+            self.variable_names())].T
         rad2deg = 180 / math.pi
 
         L_saddle_to_handle = torch.sqrt((hip_x + hand_x) ** 2 + (hip_y - hand_y) ** 2)
@@ -81,7 +83,7 @@ class HipAngleUnderNDegrees(ValidationFunction):
         Tssh = torch.acos(cos_Thsh) * rad2deg
 
         # Calculate angle from knee -> saddle -> pedal
-        min_saddle_to_pedal = torch.sqrt(hip_x**2 + hip_y**2) - crank_length
+        min_saddle_to_pedal = torch.sqrt(hip_x ** 2 + hip_y ** 2) - crank_length
         cos_Tksp = law_of_cos(lower_leg, min_saddle_to_pedal, upper_leg)
         cos_Tksp = torch.clamp(cos_Tksp, -1, 1)  # Ensure valid input for acos
         Tksp = torch.acos(cos_Tksp) * rad2deg
@@ -99,6 +101,7 @@ class HipAngleUnderNDegrees(ValidationFunction):
 
         return result
 
+
 class KneeAngleUnderNDegrees(ValidationFunction):
     def __init__(self, n: float = 20):
         self.n = n
@@ -113,11 +116,11 @@ class KneeAngleUnderNDegrees(ValidationFunction):
         ul, ll, hip_x, hip_y, crank_length = designs[:, :len(self.variable_names())].T
         rad2deg = 180 / math.pi
 
-        min_saddle_to_pedal = torch.sqrt(hip_x**2 + hip_y**2) - crank_length
+        min_saddle_to_pedal = torch.sqrt(hip_x ** 2 + hip_y ** 2) - crank_length
 
         # Calculate angle from saddle -> knee -> pedal
         cos_Tskp = law_of_cos(ul, ll, min_saddle_to_pedal)
-        
+
         # Ensure cos_Tskp is within valid range for acos
         cos_Tskp = torch.clamp(cos_Tskp, -1, 1)
         Tskp = torch.acos(cos_Tskp) * rad2deg
@@ -127,11 +130,10 @@ class KneeAngleUnderNDegrees(ValidationFunction):
         cos_Tskp_invalid = cos_Tskp > 1
         result = torch.where(cos_Tskp_invalid, cos_Tskp - 1, Tskp - self.n)
 
-        min_saddle_to_pedal_invalid = min_saddle_to_pedal <=0
-        result = torch.where(min_saddle_to_pedal_invalid, __EPS__-min_saddle_to_pedal, result)
+        min_saddle_to_pedal_invalid = min_saddle_to_pedal <= 0
+        result = torch.where(min_saddle_to_pedal_invalid, __EPS__ - min_saddle_to_pedal, result)
 
         return result
-
 
 
 AERO_VALIDATIONS: List[ValidationFunction] = [
