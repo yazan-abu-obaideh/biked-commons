@@ -7,8 +7,8 @@ from biked_commons.combined_representation.merging import DuplicateColumnRemoval
     DuplicateColumnRemovalStrategies, RowMergeStrategy, RowMergeStrategies
 from build.lib.biked_commons.exceptions import UserInputException
 
-DEFAULT_ROW_MERGE_STRATEGY = RowMergeStrategies.STRICT_INTERSECTION
-DEFAULT_COLUMN_DUPLICATION_STRATEGY = DuplicateColumnRemovalStrategies.KEEP_FIRST
+DEFAULT_STRICT_INTERSECTION = RowMergeStrategies.STRICT_INTERSECTION
+DEFAULT_KEEP_FIRST = DuplicateColumnRemovalStrategies.KEEP_FIRST
 
 
 class DatasetDescription:
@@ -48,8 +48,8 @@ def copy_description(description: DatasetDescription) -> DatasetDescription:
 class CombinedRepresentation:
     def __init__(self,
                  id_to_description: Dict[str, DatasetDescription],
-                 column_removal_strategy: DuplicateColumnRemovalStrategy = DEFAULT_COLUMN_DUPLICATION_STRATEGY,
-                 row_merge_strategy: RowMergeStrategy = DEFAULT_ROW_MERGE_STRATEGY
+                 column_removal_strategy: DuplicateColumnRemovalStrategy = DEFAULT_KEEP_FIRST,
+                 row_merge_strategy: RowMergeStrategy = DEFAULT_STRICT_INTERSECTION
                  ):
         self._id_to_description = {
             _id: copy_description(description) for _id, description in id_to_description.items()

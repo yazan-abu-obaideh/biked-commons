@@ -4,7 +4,7 @@ from typing import Dict
 import pandas as pd
 
 from biked_commons.combined_representation.combined_representation import CombinedRepresentation, DatasetDescription, \
-    Conversion, DEFAULT_ROW_MERGE_STRATEGY, DEFAULT_COLUMN_DUPLICATION_STRATEGY
+    Conversion, DEFAULT_STRICT_INTERSECTION, DEFAULT_KEEP_FIRST
 from biked_commons.combined_representation.merging import DuplicateColumnRemovalStrategy, \
     DuplicateColumnRemovalStrategies, RowMergeStrategy, RowMergeStrategies
 
@@ -118,8 +118,8 @@ class CombinedRepresentationTest(unittest.TestCase):
         self.assertEqual(set(representation.get_as_representation("third").index), {6, 7, 8, 9})
 
     def build_representation(self, id_to_description: Dict[str, DatasetDescription],
-                             column_removal_strategy: DuplicateColumnRemovalStrategy = DEFAULT_COLUMN_DUPLICATION_STRATEGY,
-                             row_merge_strategy: RowMergeStrategy = DEFAULT_ROW_MERGE_STRATEGY
+                             column_removal_strategy: DuplicateColumnRemovalStrategy = DEFAULT_KEEP_FIRST,
+                             row_merge_strategy: RowMergeStrategy = DEFAULT_STRICT_INTERSECTION
                              ) -> CombinedRepresentation:
         representation = CombinedRepresentation(id_to_description,
                                                 column_removal_strategy=column_removal_strategy,
