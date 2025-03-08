@@ -1,6 +1,7 @@
 import pandas as pd
 
 from biked_commons.combined_representation.combined_representation import CombinedRepresentation, DatasetDescription
+from biked_commons.combined_representation.conversions import RenameColumn, ScaleColumn
 from biked_commons.combined_representation.load_data import load_augmented_framed_dataset
 from biked_commons.resource_utils import resource_path
 
@@ -34,9 +35,19 @@ def _framed_description():
 def _clip_description():
     clips = pd.read_csv(resource_path('clip_sBIKED_processed.csv'), index_col=0)
     clips.index = [str(idx) for idx in clips.index]
+    conversions = []
+    for master, clip in __MASTER_TO_CLIPS_M_TO_MM.items():
+        conversions.append(ScaleColumn(
+            column=clip,
+            multiplier=(1 / 1000)
+        ))
+        conversions.append(RenameColumn(
+            from_name=clip,
+            to_name=master
+        ))
     return DatasetDescription(
         data=clips,
-        conversions=[]
+        conversions=conversions
     )
 
 

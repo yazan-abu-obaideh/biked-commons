@@ -4,7 +4,8 @@ from typing import Dict
 import pandas as pd
 
 from biked_commons.combined_representation.combined_representation import CombinedRepresentation, DatasetDescription, \
-    Conversion, DEFAULT_STRICT_INTERSECTION, DEFAULT_KEEP_FIRST
+    DEFAULT_STRICT_INTERSECTION, DEFAULT_KEEP_FIRST
+from biked_commons.combined_representation.conversions import RenameColumn, ScaleColumn
 from biked_commons.combined_representation.merging import DuplicateColumnRemovalStrategy, \
     DuplicateColumnRemovalStrategies, RowMergeStrategy, RowMergeStrategies
 
@@ -31,20 +32,20 @@ class CombinedRepresentationTest(unittest.TestCase):
         first = pd.DataFrame.from_records([{"A": 17, "C-in-first": 13} for _ in range(13)])
         second = pd.DataFrame.from_records([{"B": 19, "C-in-second": 1301} for _ in range(13)])
         first_description = DatasetDescription(
-            first, [Conversion(
-                name="C-in-first",
-                master_name="C-in-master",
-                conversion_function=lambda x: x / 10,
-                inverse_conversion_function=lambda x: x * 10
-            )
+            first, [
+                ScaleColumn(
+                    column="C-in-first",
+                    multiplier=0.1
+                ),
+                RenameColumn(
+                    from_name="C-in-first",
+                    to_name="C-in-master", ),
             ]
         )
         second_description = DatasetDescription(second, conversions=[
-            Conversion(
-                name="C-in-second",
-                master_name="C-in-master",
-                conversion_function=lambda x: x,
-                inverse_conversion_function=lambda x: x
+            RenameColumn(
+                from_name="C-in-second",
+                to_name="C-in-master",
             )
         ])
         representation = self.build_representation({
