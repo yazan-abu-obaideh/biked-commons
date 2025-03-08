@@ -45,3 +45,12 @@ class ScaleColumn(ReversibleConversion):
             **{
                 self.column: dataframe[self.column] / self.multiplier
             })
+
+
+@attrs.define(frozen=True)
+class OneHotEncode(ReversibleConversion):
+    def apply(self, dataframe: pd.DataFrame) -> pd.DataFrame:
+        pass
+
+    def reverse(self, dataframe: pd.DataFrame) -> pd.DataFrame:
+        pass
