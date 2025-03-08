@@ -1,15 +1,15 @@
-import abc
+from abc import ABCMeta, abstractmethod
 
 import attrs
 import pandas as pd
 
 
-class ReversibleConversion(metaclass=abc.ABCMeta):
-    @abc.abstractmethod
+class ReversibleConversion(metaclass=ABCMeta):
+    @abstractmethod
     def apply(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         pass
 
-    @abc.abstractmethod
+    @abstractmethod
     def reverse(self, dataframe: pd.DataFrame) -> pd.DataFrame:
         pass
 
