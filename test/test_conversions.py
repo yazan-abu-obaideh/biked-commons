@@ -36,7 +36,9 @@ class ReversibleConversionsTest(unittest.TestCase):
 
         self.assert_dataframes_equal(actual_converted, expected_converted)
         self.assert_original_not_modified(starting_copy, starting_data)
+        converted_copy = actual_converted.copy(deep=True)
         self.assert_dataframes_equal(conversion.reverse(actual_converted), starting_copy)
+        self.assert_original_not_modified(converted_copy, actual_converted)
 
     def assert_original_not_modified(self, starting_copy: pd.DataFrame, starting_data: pd.DataFrame):
         self.assert_dataframes_equal(starting_copy, starting_data)
