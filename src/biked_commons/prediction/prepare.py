@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
+import os
+import requests
+from tqdm import tqdm
 
 def prepare_validity():
     df = pd.read_csv('../../resources/datasets/raw_datasets/validity.csv', index_col=0)
@@ -53,8 +56,8 @@ def prepare_aero():
     df = pd.read_csv('../../resources/datasets/raw_datasets/aero.csv', index_col=0)
     df = df.reset_index(drop=True)
 
-    Y = df["Drag"]
-    X = df.drop("Drag", axis=1)
+    Y = df["drag"]
+    X = df.drop("drag", axis=1)
 
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0)
 
@@ -63,5 +66,55 @@ def prepare_aero():
     Y_train.to_csv('../../resources/datasets/split_datasets/aero_Y_train.csv')
     Y_test.to_csv('../../resources/datasets/split_datasets/aero_Y_test.csv')
 
+def download_file(file_url, file_path):
+    """Downloads a file with a progress bar if it doesn't exist locally."""
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)  # Ensure directory exists
 
+    response = requests.get(file_url, stream=True)
+    
+    if response.status_code == 200:
+        file_size = int(response.headers.get('content-length', 0))  # Get file size if available
+        chunk_size = 1024  # 1 KB per chunk
+
+        with open(file_path, "wb") as f, tqdm(
+            desc=f"Downloading {os.path.basename(file_path)}",
+            total=file_size,
+            unit="B",
+            unit_scale=True,
+            unit_divisor=1024,
+        ) as bar:
+            for chunk in response.iter_content(chunk_size=chunk_size):
+                if chunk:  # Filter out keep-alive chunks
+                    f.write(chunk)
+                    bar.update(len(chunk))
+        print(f"✅ Download complete: {file_path}")
+    else:
+        print(f"❌ Error downloading {file_path}: {response.status_code}")
+
+def check_download_CLIP_data():
+    # File paths and URLs
+    x_id = "10541435"
+    x_url = f"https://dataverse.harvard.edu/api/access/datafile/{x_id}"
+    x_file = "../../resources/datasets/split_datasets/CLIP_X_train.csv"
+
+    y_id = "10992683"
+    y_url = f"https://dataverse.harvard.edu/api/access/datafile/{y_id}"
+    y_file = "../../resources/datasets/split_datasets/CLIP_Y_train.npy"
+
+    # Check and download X
+    if not os.path.exists(x_file):
+        print(f"⚠️  {os.path.basename(x_file)} not found in datasets folder. Performing first-time download from Harvard Dataverse...")
+        download_file(x_url, x_file)
+    else:
+        print(f"✅ {os.path.basename(x_file)} already exists in datasets folder. Skipping download.")
+
+    # Check and download Y
+    if not os.path.exists(y_file):
+        print(f"⚠️  {os.path.basename(y_file)} not found in datasets folder. Performing first-time download from Harvard Dataverse...")
+        download_file(y_url, y_file)
+    else:
+        print(f"✅ {os.path.basename(y_file)} already exists in datasets folder. Skipping download.")
+
+def prepare_clip():
+    check_download_CLIP_data()
 
