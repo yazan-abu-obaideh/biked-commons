@@ -78,26 +78,26 @@ class RearSpokesTooLong(ValidationFunction):
         return wheel_diameter_rear - erd_rear
 
 
-class BsdSmaller(ValidationFunction):
+class BsdRearTooSmall(ValidationFunction):
     def friendly_name(self) -> str:
-        return "BSD < ERD rear"
+        return "Bsd rear too small"
 
     def variable_names(self) -> List[str]:
         return ["BSD rear", "ERD rear"]
 
-    def validate(self, designs: torch.Tensor) -> torch.Tensor:
+    def validate(self, designs: torch.tensor) -> torch.tensor:
         bsd_rear, erd_rear = designs[:, :len(self.variable_names())].T
         return bsd_rear - erd_rear
 
 
-class BsdSmallerFront(ValidationFunction):
+class BsdFrontTooSmall(ValidationFunction):
     def friendly_name(self) -> str:
-        return "BSD < ERD front"
+        return "Bsd front too small"
 
     def variable_names(self) -> List[str]:
         return ["BSD front", "ERD front"]
 
-    def validate(self, designs: torch.Tensor) -> torch.Tensor:
+    def validate(self, designs: torch.tensor) -> torch.tensor:
         bsd_front, erd_front = designs[:, :len(self.variable_names())].T
         return bsd_front - erd_front
 
@@ -114,26 +114,26 @@ class FrontSpokesTooLong(ValidationFunction):
         return wheel_diameter_front - erd_front
 
 
-class CheckHtlx(ValidationFunction):
+class HeadTubeLowerExtensionTooGreat(ValidationFunction):
     def friendly_name(self) -> str:
-        return "HTLX > HTL"
+        return "Head tube lower extension too great"
 
     def variable_names(self) -> List[str]:
         return ["Head tube length textfield", "Head tube lower extension2"]
 
-    def validate(self, designs: torch.Tensor) -> torch.Tensor:
+    def validate(self, designs: torch.tensor) -> torch.tensor:
         head_tube_length, head_tube_lower_extension = designs[:, :len(self.variable_names())].T
         return head_tube_length - head_tube_lower_extension
 
 
-class CheckHtlxHtux(ValidationFunction):
+class HeadTubeLengthTooGreat(ValidationFunction):
     def friendly_name(self) -> str:
-        return "HTLX+HTUX>HTL"
+        return "Head tube length too great"
 
     def variable_names(self) -> List[str]:
         return ["Head tube length textfield", "Head tube upper extension2", "Head tube lower extension2"]
 
-    def validate(self, designs: torch.Tensor) -> torch.Tensor:
+    def validate(self, designs: torch.tensor) -> torch.tensor:
         head_tube_length, head_tube_upper_extension, head_tube_lower_extension = designs[:,
                                                                                  :len(self.variable_names())].T
         return head_tube_length - (head_tube_upper_extension + head_tube_lower_extension)
@@ -210,11 +210,11 @@ RAW_VALIDATION_FUNCTIONS: List[ValidationFunction] = [
     RearSpokes(),
     FrontSpokes(),
     RearSpokesTooLong(),
-    BsdSmaller(),
-    BsdSmallerFront(),
+    BsdFrontTooSmall(),
+    BsdRearTooSmall(),
     FrontSpokesTooLong(),
-    CheckHtlx(),
-    CheckHtlxHtux(),
+    HeadTubeLengthTooGreat(),
+    CheckDownTubeReachesHeadTubeJunction(),
     CheckDownTubeReachesHeadTubeJunction(),
     CheckDownTubeIntersectsFrontWheel(),
 ]
