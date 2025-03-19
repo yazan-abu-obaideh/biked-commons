@@ -15,14 +15,14 @@ class SaddleHeightTooSmall(ValidationFunction):
         return saddle_height - (seat_tube_length + 40)
 
 
-class SaddleHeightTooGreat(ValidationFunction):
+class SeatPostTooShort(ValidationFunction):
     def friendly_name(self) -> str:
-        return "Saddle height too great"
+        return "Seat post too short"
 
     def variable_names(self) -> List[str]:
         return ["Seat tube length", "Seatpost LENGTH", "Saddle height"]
 
-    def validate(self, designs: torch.tensor) -> torch.tensor:
+    def validate(self, designs: torch.Tensor) -> torch.Tensor:
         seat_tube_length, seatpost_length, saddle_height = designs[:, :len(self.variable_names())].T
         return (seat_tube_length + seatpost_length + 30) - saddle_height
 
@@ -90,7 +90,7 @@ class ChainStayLessThanZero(ValidationFunction):
 
 CLIPS_VALIDATIONS: List[ValidationFunction] = [
     SaddleHeightTooSmall(),
-    SaddleHeightTooGreat(),
+    SeatPostTooShort(),
     BsdRearTooSmall(),
     BsdFrontTooSmall(),
     HeadTubeLowerExtensionTooGreat(),
