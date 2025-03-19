@@ -15,7 +15,7 @@ class SeatPostTooShort(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         seat_tube_length, seatpost_length, saddle_height = designs[:, :len(self.variable_names())].T
-        return (seat_tube_length + seatpost_length + 30) - saddle_height
+        return saddle_height - (seat_tube_length + seatpost_length + 30)
 
 
 class FrontWheelOuterDiameter(ValidationFunction):
@@ -27,7 +27,7 @@ class FrontWheelOuterDiameter(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         wheel_diameter_front, bsd_front = designs[:, :len(self.variable_names())].T
-        return wheel_diameter_front - bsd_front
+        return bsd_front - wheel_diameter_front
 
 
 class RearWheelOuterDiameter(ValidationFunction):
@@ -39,10 +39,10 @@ class RearWheelOuterDiameter(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         wheel_diameter_rear, bsd_rear = designs[:, :len(self.variable_names())].T
-        return wheel_diameter_rear - bsd_rear
+        return bsd_rear - wheel_diameter_rear
 
 
-class RearSpokes(ValidationFunction):
+class RearSpokesTooShort(ValidationFunction):
     def friendly_name(self) -> str:
         return "Rear spokes too short"
 
@@ -51,10 +51,10 @@ class RearSpokes(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         erd_rear, bsd_rear, rim_depth_rear = designs[:, :len(self.variable_names())].T
-        return erd_rear - (bsd_rear - 2 * rim_depth_rear)
+        return (bsd_rear - 2 * rim_depth_rear) - erd_rear
 
 
-class FrontSpokes(ValidationFunction):
+class FrontSpokesTooShort(ValidationFunction):
     def friendly_name(self) -> str:
         return "Front spokes too short"
 
@@ -63,7 +63,7 @@ class FrontSpokes(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         erd_front, bsd_front, rim_depth_front = designs[:, :len(self.variable_names())].T
-        return erd_front - (bsd_front - 2 * rim_depth_front)
+        return (bsd_front - 2 * rim_depth_front) - erd_front
 
 
 class RearSpokesTooLong(ValidationFunction):
@@ -75,7 +75,18 @@ class RearSpokesTooLong(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         wheel_diameter_rear, erd_rear = designs[:, :len(self.variable_names())].T
-        return wheel_diameter_rear - erd_rear
+        return erd_rear - wheel_diameter_rear
+    
+class FrontSpokesTooLong(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "Front spokes too long"
+
+    def variable_names(self) -> List[str]:
+        return ["Wheel diameter front", "ERD front"]
+
+    def validate(self, designs: torch.Tensor) -> torch.Tensor:
+        wheel_diameter_front, erd_front = designs[:, :len(self.variable_names())].T
+        return erd_front - wheel_diameter_front
 
 
 class BsdRearTooSmall(ValidationFunction):
@@ -87,7 +98,7 @@ class BsdRearTooSmall(ValidationFunction):
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
         bsd_rear, erd_rear = designs[:, :len(self.variable_names())].T
-        return bsd_rear - erd_rear
+        return erd_rear - bsd_rear
 
 
 class BsdFrontTooSmall(ValidationFunction):
@@ -99,19 +110,7 @@ class BsdFrontTooSmall(ValidationFunction):
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
         bsd_front, erd_front = designs[:, :len(self.variable_names())].T
-        return bsd_front - erd_front
-
-
-class FrontSpokesTooLong(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Front spokes too long"
-
-    def variable_names(self) -> List[str]:
-        return ["Wheel diameter front", "ERD front"]
-
-    def validate(self, designs: torch.Tensor) -> torch.Tensor:
-        wheel_diameter_front, erd_front = designs[:, :len(self.variable_names())].T
-        return wheel_diameter_front - erd_front
+        return erd_front - bsd_front
 
 
 class HeadTubeLowerExtensionTooGreat(ValidationFunction):
@@ -123,7 +122,7 @@ class HeadTubeLowerExtensionTooGreat(ValidationFunction):
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
         head_tube_length, head_tube_lower_extension = designs[:, :len(self.variable_names())].T
-        return head_tube_length - head_tube_lower_extension
+        return head_tube_lower_extension - head_tube_length
 
 
 class HeadTubeLengthTooGreat(ValidationFunction):
@@ -207,12 +206,12 @@ RAW_VALIDATION_FUNCTIONS: List[ValidationFunction] = [
     SeatPostTooShort(),
     FrontWheelOuterDiameter(),
     RearWheelOuterDiameter(),
-    RearSpokes(),
-    FrontSpokes(),
+    RearSpokesTooShort(),
+    FrontSpokesTooShort(),
     RearSpokesTooLong(),
+    FrontSpokesTooLong(),
     BsdFrontTooSmall(),
     BsdRearTooSmall(),
-    FrontSpokesTooLong(),
     HeadTubeLengthTooGreat(),
     CheckDownTubeReachesHeadTubeJunction(),
     CheckDownTubeReachesHeadTubeJunction(),

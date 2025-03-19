@@ -12,7 +12,7 @@ class SaddleHeightTooSmall(ValidationFunction):
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
         saddle_height, seat_tube_length = designs[:, :len(self.variable_names())].T
-        return saddle_height - (seat_tube_length + 40)
+        return (seat_tube_length + 40) - saddle_height
 
 
 class SeatPostTooShort(ValidationFunction):
@@ -24,7 +24,7 @@ class SeatPostTooShort(ValidationFunction):
 
     def validate(self, designs: torch.Tensor) -> torch.Tensor:
         seat_tube_length, seatpost_length, saddle_height = designs[:, :len(self.variable_names())].T
-        return (seat_tube_length + seatpost_length + 30) - saddle_height
+        return saddle_height - (seat_tube_length + seatpost_length + 30) 
 
 
 class BsdRearTooSmall(ValidationFunction):
@@ -36,7 +36,7 @@ class BsdRearTooSmall(ValidationFunction):
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
         bsd_rear, erd_rear = designs[:, :len(self.variable_names())].T
-        return bsd_rear - erd_rear
+        return erd_rear - bsd_rear
 
 
 class BsdFrontTooSmall(ValidationFunction):
@@ -48,7 +48,7 @@ class BsdFrontTooSmall(ValidationFunction):
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
         bsd_front, erd_front = designs[:, :len(self.variable_names())].T
-        return bsd_front - erd_front
+        return erd_front - bsd_front
 
 
 class HeadTubeLowerExtensionTooGreat(ValidationFunction):
@@ -60,7 +60,7 @@ class HeadTubeLowerExtensionTooGreat(ValidationFunction):
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
         head_tube_length, head_tube_lower_extension = designs[:, :len(self.variable_names())].T
-        return head_tube_length - head_tube_lower_extension
+        return head_tube_lower_extension - head_tube_length
 
 
 class HeadTubeLengthTooGreat(ValidationFunction):
@@ -73,7 +73,7 @@ class HeadTubeLengthTooGreat(ValidationFunction):
     def validate(self, designs: torch.tensor) -> torch.tensor:
         head_tube_length, head_tube_upper_extension, head_tube_lower_extension = designs[:,
                                                                                  :len(self.variable_names())].T
-        return head_tube_length - (head_tube_upper_extension + head_tube_lower_extension)
+        return (head_tube_upper_extension + head_tube_lower_extension) - head_tube_length
 
 
 class ChainStayLessThanZero(ValidationFunction):
