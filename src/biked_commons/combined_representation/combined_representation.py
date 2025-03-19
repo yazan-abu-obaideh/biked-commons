@@ -2,14 +2,17 @@ from typing import List, Dict
 
 import pandas as pd
 
-from biked_commons.combined_representation.conversions import Conversion
+from biked_commons.combined_representation.conversions import ReversibleConversion
 from biked_commons.combined_representation.merging import DuplicateColumnRemovalStrategy, \
     DuplicateColumnRemovalStrategies, RowMergeStrategy, RowMergeStrategies
 from build.lib.biked_commons.exceptions import UserInputException
 
+DEFAULT_STRICT_INTERSECTION = RowMergeStrategies.STRICT_INTERSECTION
+DEFAULT_KEEP_FIRST = DuplicateColumnRemovalStrategies.KEEP_FIRST
+
 
 class DatasetDescription:
-    def __init__(self, data: pd.DataFrame, conversions: List[Conversion]):
+    def __init__(self, data: pd.DataFrame, conversions: List[ReversibleConversion]):
         self.conversions = conversions
         self.original_columns = list(data.columns)
         self._cleaned = False
@@ -45,8 +48,8 @@ def copy_description(description: DatasetDescription) -> DatasetDescription:
 class CombinedRepresentation:
     def __init__(self,
                  id_to_description: Dict[str, DatasetDescription],
-                 column_removal_strategy: DuplicateColumnRemovalStrategy = DuplicateColumnRemovalStrategies.KEEP_FIRST,
-                 row_merge_strategy: RowMergeStrategy = RowMergeStrategies.IGNORE
+                 column_removal_strategy: DuplicateColumnRemovalStrategy = DEFAULT_KEEP_FIRST,
+                 row_merge_strategy: RowMergeStrategy = DEFAULT_STRICT_INTERSECTION
                  ):
         self._id_to_description = {
             _id: copy_description(description) for _id, description in id_to_description.items()
@@ -65,8 +68,9 @@ class CombinedRepresentation:
             raise UserInputException(f"Representation '{representation_id}' does not exist")
 
         result = self.get_data()
-        for conversion in description.conversions:
-            result[conversion.name] = conversion.inverse_conversion_function(result[conversion.master_name])
+        in_reverse_order = description.conversions[::-1]
+        for conversion in in_reverse_order:
+            result = conversion.reverse(result)
 
         return pd.DataFrame(result,
                             columns=description.original_columns,
@@ -80,11 +84,10 @@ class CombinedRepresentation:
         return row_merge_strategy.merge_rows(handled_columns, [d.get_data() for d in self._id_to_description.values()])
 
     def _convert(self, dataset_description: DatasetDescription) -> pd.DataFrame:
-        start_data = dataset_description.get_data()
+        result = dataset_description.get_data()
         for conversion in dataset_description.conversions:
-            start_data[conversion.master_name] = conversion.conversion_function(start_data[conversion.name])
-            start_data.drop(labels=[conversion.name], axis=1, inplace=True)
-        return start_data
+            result = conversion.apply(result)
+        return result
 
     def _clean_descriptions(self):
         for desc in self._id_to_description.values():
