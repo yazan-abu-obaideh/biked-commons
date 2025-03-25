@@ -121,6 +121,9 @@ class BikeCad:
         self._log_info("BikeCAD instance running")
         return process
 
+    def __del__(self):
+        self.kill()
+
     def kill(self):
         self._instance.kill()
 
