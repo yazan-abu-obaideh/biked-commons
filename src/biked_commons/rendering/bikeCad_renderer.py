@@ -1,9 +1,11 @@
 import asyncio
+
 import logging
 import os
 import platform
 import queue
 import threading
+
 import uuid
 from asyncio import subprocess
 
@@ -19,6 +21,10 @@ BIKE_CAD_PATH = resource_path("ConsoleBikeCAD.jar")
 LOGGER_NAME = "BikeCadLogger"
 
 WINDOWS = "Windows"
+
+EVENT_LOOP_LOCK = threading.Lock()
+with EVENT_LOOP_LOCK:
+    EVENT_LOOP = asyncio.new_event_loop()
 
 
 class RenderingService:
@@ -63,12 +69,10 @@ class BikeCad:
                  renderer_timeout: int,
                  renderer_timeout_granularity: int):
         self._expected_success = self._get_expected_success()
-        self._event_loop_lock = threading.Lock()
         self._renderer_timeout = renderer_timeout
         self._renderer_timeout_granularity = renderer_timeout_granularity
-        with self._event_loop_lock:
-            self._event_loop = asyncio.new_event_loop()
-            self._instance = self._event_loop.run_until_complete(self._init_instance())
+        with EVENT_LOOP_LOCK:
+            self._instance = EVENT_LOOP.run_until_complete(self._init_instance())
         self._log_info("Started BikeCAD process!")
 
     def __enter__(self):
@@ -173,8 +177,8 @@ class BikeCad:
                     self._log_error(f"Renderer threw an exception! {signal}")
                     raise Exception(f"Something went wrong: {signal}")
 
-        with self._event_loop_lock:
-            self._event_loop.run_until_complete(await_termination_timed())
+        with EVENT_LOOP_LOCK:
+            EVENT_LOOP.run_until_complete(await_termination_timed())
 
     def _get_expected_success(self):
         if platform.system() == WINDOWS:
