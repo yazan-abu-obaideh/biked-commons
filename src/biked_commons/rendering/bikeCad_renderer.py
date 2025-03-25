@@ -3,6 +3,7 @@ import logging
 import os
 import platform
 import queue
+import signal
 import threading
 import uuid
 from asyncio import subprocess
@@ -125,7 +126,18 @@ class BikeCad:
         self.kill()
 
     def kill(self):
-        self._instance.kill()
+        self.kill_process_tree(self._instance.pid)
+
+    def kill_process_tree(self, pid):
+        # Kill the process and all its children
+        try:
+            # Get the list of child processes
+            children = os.popen(f'pgrep -P {pid}').read().strip().split()
+            for child in children:
+                self.kill_process_tree(int(child))  # Recursively kill children
+            os.kill(pid, signal.SIGTERM)  # Terminate the process
+        except Exception as e:
+            print(f"Error killing process {pid}: {e}")
 
     def _run(self, command):
         self._log_info(f"Running command {command}...")
