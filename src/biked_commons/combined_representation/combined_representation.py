@@ -5,7 +5,7 @@ import pandas as pd
 from biked_commons.combined_representation.conversions import ReversibleConversion
 from biked_commons.combined_representation.merging import DuplicateColumnRemovalStrategy, \
     DuplicateColumnRemovalStrategies, RowMergeStrategy, RowMergeStrategies
-from build.lib.biked_commons.exceptions import UserInputException
+from biked_commons.exceptions import UserInputException
 
 DEFAULT_STRICT_INTERSECTION = RowMergeStrategies.STRICT_INTERSECTION
 DEFAULT_KEEP_FIRST = DuplicateColumnRemovalStrategies.KEEP_FIRST

@@ -129,6 +129,7 @@ class BikeCad:
 
     def __del__(self):
         self.kill()
+        del self._instance
 
     def kill(self):
         self.kill_process_tree(self._instance.pid)
@@ -140,7 +141,6 @@ class BikeCad:
             for child in parent.children(recursive=True):
                 child.terminate()  # Gracefully terminate child processes
             parent.terminate()  # Terminate the parent process
-            parent.wait()  # Wait for the parent process to terminate
         except psutil.NoSuchProcess:
             pass
         except Exception as e:
