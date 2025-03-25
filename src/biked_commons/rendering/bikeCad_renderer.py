@@ -122,11 +122,13 @@ class BikeCad:
         return process
 
     def kill(self):
-        self._instance.kill()
+        self._instance.terminate()
+        self._event_loop.run_until_complete(self._instance.wait())
 
     def _run(self, command):
         self._log_info(f"Running command {command}...")
         self._instance.stdin.write(bytes(command, 'UTF-8'))
+        self._instance.wait()
         self._await_termination()
 
     def _await_termination(self):
