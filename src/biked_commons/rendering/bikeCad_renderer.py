@@ -110,8 +110,11 @@ class BikeCad:
         self._run("pnglist<>" + "<>".join(files) + "\n")
 
     async def _init_instance(self):
-        command = f"java -Djava.awt.headless=false -jar  {BIKE_CAD_PATH}"
-        process = await asyncio.create_subprocess_shell(bytes(command, 'utf-8'),
+        if platform.system() == WINDOWS:
+            command = f"java -Djava.awt.headless=false -jar  {BIKE_CAD_PATH}"
+        else:
+            command = bytes(f"java -Djava.awt.headless=false -jar  {BIKE_CAD_PATH}", 'utf-8')
+        process = await asyncio.create_subprocess_shell(command,
                                                         stdin=subprocess.PIPE,
                                                         stdout=subprocess.PIPE,
                                                         stderr=subprocess.PIPE)
