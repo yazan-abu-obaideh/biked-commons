@@ -8,6 +8,8 @@ import threading
 import uuid
 from asyncio import subprocess
 
+import psutil
+
 from biked_commons.exceptions import InternalError
 from biked_commons.resource_utils import resource_path, STANDARD_BIKE_RESOURCE
 from biked_commons.xml_handling.cad_builder import BikeCadFileBuilder
@@ -131,11 +133,13 @@ class BikeCad:
     def kill_process_tree(self, pid):
         # Kill the process and all its children
         try:
-            # Get the list of child processes
-            children = os.popen(f'pgrep -P {pid}').read().strip().split()
-            for child in children:
-                self.kill_process_tree(int(child))  # Recursively kill children
-            os.kill(pid, signal.SIGTERM)  # Terminate the process
+            parent = psutil.Process(pid)
+            for child in parent.children(recursive=True):
+                child.terminate()  # Gracefully terminate child processes
+            parent.terminate()  # Terminate the parent process
+            parent.wait()  # Wait for the parent process to terminate
+        except psutil.NoSuchProcess:
+            pass
         except Exception as e:
             print(f"Error killing process {pid}: {e}")
 
