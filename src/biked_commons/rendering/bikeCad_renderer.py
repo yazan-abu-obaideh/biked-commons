@@ -3,7 +3,6 @@ import logging
 import os
 import platform
 import queue
-import signal
 import threading
 import uuid
 from asyncio import subprocess
@@ -69,7 +68,6 @@ class BikeCad:
         self._renderer_timeout_granularity = renderer_timeout_granularity
         with self._event_loop_lock:
             self._event_loop = asyncio.new_event_loop()
-            self._event_loop.run_forever()
             self._instance = self._event_loop.run_until_complete(self._init_instance())
         self._log_info("Started BikeCAD process!")
 
@@ -78,7 +76,6 @@ class BikeCad:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.kill()
-        self._event_loop.stop()
 
     def render(self, bike_xml):
         bike_path = self._generate_bike_path()
