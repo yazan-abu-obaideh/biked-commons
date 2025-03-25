@@ -69,6 +69,9 @@ class BikeCad:
             self._instance = self._event_loop.run_until_complete(self._init_instance())
         self._log_info("Started BikeCAD process!")
 
+    def __del__(self):
+        self.kill()
+
     def __enter__(self):
         return self
 
