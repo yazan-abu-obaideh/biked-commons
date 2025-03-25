@@ -39,6 +39,8 @@ class RenderingTest(unittest.TestCase):
         try:
             with open(path_of_test_resource(test_image_path), "r") as image_file:
                 result_str = str(rendering_result, "utf-8")
+                len_res = len(result_str)
+                print(f"f{len_res=}")
                 expected_str = image_file.read()
                 exactly_equal = result_str == expected_str
                 similar_enough = int(exactly_equal)
