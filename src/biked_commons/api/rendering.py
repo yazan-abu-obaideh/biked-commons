@@ -14,12 +14,8 @@ class SingleThreadedRenderer:
 
     """
 
-    def __init__(self,
-                 renderer_timeout_seconds: int = 30,
-                 timeout_granularity_seconds: int = 1):
-        self.renderer = RenderingService(renderer_pool_size=1,
-                                         renderer_timeout=renderer_timeout_seconds,
-                                         timeout_granularity=timeout_granularity_seconds)
+    def __init__(self):
+        self.renderer = RenderingService()
         with open(STANDARD_BIKE_RESOURCE, "r") as file:
             self.standard_bike_xml = file.read()
 
