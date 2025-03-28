@@ -29,7 +29,7 @@ class RenderingClient:
             while not self.check_server_health():
                 time.sleep(1)
                 wait_count += 1
-                if wait_count > 10:
+                if wait_count > 60:
                     raise InternalError("Could not start server...")
 
     def _kill_server(self):
