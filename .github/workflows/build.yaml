@@ -61,6 +61,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
+          distribution: 'zulu'
           java-version: '17'
       - name: build Bike Console JAR as mvn dependency
         run: cd BikeJar && ./build.sh
