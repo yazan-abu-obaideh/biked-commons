@@ -61,3 +61,6 @@ class RenderingClient:
     def _read_standard_bike_xml(self, handler):
         with open(STANDARD_BIKE_RESOURCE) as file:
             handler.set_xml(file.read())
+
+
+RENDERING_CLIENT_INSTANCE = RenderingClient()
