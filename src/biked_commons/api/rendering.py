@@ -1,6 +1,6 @@
 import attrs
 
-from biked_commons.rendering.bikeCad_renderer import RenderingService
+from biked_commons.rendering.BikeCAD_server_client import RenderingClient
 from biked_commons.resource_utils import STANDARD_BIKE_RESOURCE
 
 
@@ -15,7 +15,7 @@ class SingleThreadedRenderer:
     """
 
     def __init__(self):
-        self.renderer = RenderingService()
+        self.renderer = RenderingClient()
         with open(STANDARD_BIKE_RESOURCE, "r") as file:
             self.standard_bike_xml = file.read()
 
