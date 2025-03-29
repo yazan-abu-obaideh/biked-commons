@@ -56,6 +56,8 @@ jobs:
     defaults:
       run:
         working-directory: BikeCAD-server
+    env:
+      DISPLAY: :99
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 17
@@ -65,5 +67,7 @@ jobs:
           java-version: '17'
       - name: build Bike Console JAR as mvn dependency
         run: cd BikeJar && ./build.sh
+      - name: Prepare virtual display
+        run: Xvfb :99 -screen 0 1900x1080x8 &
       - name: Build with Maven
         run: mvn clean install
