@@ -26,13 +26,13 @@ public class BikeCadWrapper {
 
 
     private static bikeCADPro initBikeCad() throws NoSuchFieldException, IllegalAccessException, NoSuchMethodException, InvocationTargetException {
-        bikeCADPro bikeCADPro = new bikeCADPro();
-        setStaticField(bikeCADPro, "myLocale", LOCALE);
-        setStaticField(bikeCADPro, "res", RESOURCE_BUNDLE);
-        setStaticField(bikeCADPro, "confDir", CONFIG_DIR);
-        invokeVoidMethod(bikeCADPro, "splashScreenInit");
-        bikeCADPro.init();
-        return bikeCADPro;
+        bikeCADPro instance = new bikeCADPro();
+        setStaticField(bikeCADPro.class, "myLocale", LOCALE);
+        setStaticField(bikeCADPro.class, "res", RESOURCE_BUNDLE);
+        setStaticField(bikeCADPro.class, "confDir", CONFIG_DIR);
+        invokeVoidMethod(instance, "splashScreenInit");
+        instance.init();
+        return instance;
     }
 
     private static void invokeVoidMethod(bikeCADPro bikeCADPro, String methodName) throws NoSuchMethodException, IllegalAccessException, InvocationTargetException {
@@ -41,10 +41,9 @@ public class BikeCadWrapper {
         method.invoke(bikeCADPro);
     }
 
-    private static void setStaticField(bikeCADPro bikeCADPro,
-                                       String fieldName,
+    private static void setStaticField(Class<?> aClass, String fieldName,
                                        Object value) throws NoSuchFieldException, IllegalAccessException {
-        Field field = bikeCADPro.getClass().getDeclaredField(fieldName);
+        Field field = aClass.getDeclaredField(fieldName);
         field.setAccessible(true);
         field.set(null, value);
     }
