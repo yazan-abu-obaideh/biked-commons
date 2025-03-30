@@ -41,7 +41,8 @@ public class BikeCadWrapper {
         method.invoke(bikeCADPro);
     }
 
-    private static void setStaticField(Class<?> aClass, String fieldName,
+    private static void setStaticField(Class<?> aClass,
+                                       String fieldName,
                                        Object value) throws NoSuchFieldException, IllegalAccessException {
         Field field = aClass.getDeclaredField(fieldName);
         field.setAccessible(true);
