@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -27,10 +28,18 @@ class SingleThreadedBikeServiceTest {
         URL imageResource = getNonNullResource(resourceHandle.replace(".bcad", ".svg"));
         byte[] bikeRenderingResult = BIKE_SERVICE.renderBike(Files.readString(Path.of(bcadResource.getPath())));
         assertNotEquals(0, bikeRenderingResult.length);
-        assertTrue(similarArrays(Files.readAllBytes(Path.of(imageResource.getPath())), bikeRenderingResult));
+        byte[] expectedBytes = Files.readAllBytes(Path.of(imageResource.getPath()));
+        assertTrue(similarArrays(
+                toCharArray(expectedBytes),
+                toCharArray(bikeRenderingResult)
+        ));
     }
 
-    private boolean similarArrays(byte[] first, byte[] second) {
+    private static char[] toCharArray(byte[] expectedBytes) {
+        return new String(expectedBytes, StandardCharsets.UTF_8).toCharArray();
+    }
+
+    private boolean similarArrays(char[] first, char[] second) {
         if (first.length == 0 && second.length == 0) {
             return true;
         }
