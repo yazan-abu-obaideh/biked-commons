@@ -4,6 +4,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,9 +36,10 @@ class SingleThreadedBikeServiceTest {
         }
         int smallerLength = Math.min(first.length, second.length);
         int lengthDifference = Math.abs(first.length - second.length);
-        int fractionLengthDifference = lengthDifference / smallerLength;
+        var fractionLengthDifference = BigDecimal.valueOf(lengthDifference)
+                .divide(BigDecimal.valueOf(smallerLength), RoundingMode.HALF_UP);
         System.out.println("fractionLengthDifference: " + fractionLengthDifference);
-        if (fractionLengthDifference > 0.000_01) {
+        if (fractionLengthDifference.compareTo(BigDecimal.valueOf(0.000_01)) > 0) {
             return false;
         }
         int numberDifferent = 0;
@@ -45,9 +48,9 @@ class SingleThreadedBikeServiceTest {
                 numberDifferent += 1;
             }
         }
-        int fractionDifferent = numberDifferent / smallerLength;
-        System.out.println("fractionDifferent: " + fractionDifferent);
-        return fractionDifferent < 0.000_01;
+        BigDecimal fractionDifference = BigDecimal.valueOf(numberDifferent).divide(BigDecimal.valueOf(smallerLength), RoundingMode.HALF_UP);
+        System.out.println("fractionDifferent: " + fractionDifference);
+        return fractionDifference.compareTo(BigDecimal.valueOf(0.000_01)) < 0;
     }
 
     static List<Integer> bikeIndices() {
