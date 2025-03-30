@@ -48,6 +48,8 @@ class SingleThreadedBikeServiceTest {
                 numberDifferent += 1;
             }
         }
+        System.out.println("Number different: " + numberDifferent);
+        System.out.println("Smaller length: " + smallerLength);
         BigDecimal fractionDifference = BigDecimal.valueOf(numberDifferent).divide(BigDecimal.valueOf(smallerLength), RoundingMode.HALF_UP);
         System.out.println("fractionDifferent: " + fractionDifference);
         return fractionDifference.compareTo(BigDecimal.valueOf(0.000_01)) < 0;
