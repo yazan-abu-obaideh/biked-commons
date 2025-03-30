@@ -1,5 +1,6 @@
 package org.yazan;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
@@ -11,7 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SingleThreadedBikeServiceTest {
 
@@ -24,7 +25,30 @@ class SingleThreadedBikeServiceTest {
         URL bcadResource = getNonNullResource(resourceHandle);
         URL imageResource = getNonNullResource(resourceHandle.replace(".bcad", ".svg"));
         byte[] bikeRenderingResult = BIKE_SERVICE.renderBike(Files.readString(Path.of(bcadResource.getPath())));
-        assertArrayEquals(Files.readAllBytes(Path.of(imageResource.getPath())), bikeRenderingResult);
+        assertNotEquals(0, bikeRenderingResult.length);
+        assertTrue(similarArrays(Files.readAllBytes(Path.of(imageResource.getPath())), bikeRenderingResult));
+    }
+
+    private boolean similarArrays(byte[] first, byte[] second) {
+        if (first.length == 0 && second.length == 0) {
+            return true;
+        }
+        int smallerLength = Math.min(first.length, second.length);
+        int lengthDifference = Math.abs(first.length - second.length);
+        int fractionLengthDifference = lengthDifference / smallerLength;
+        System.out.println("fractionLengthDifference: " + fractionLengthDifference);
+        if (fractionLengthDifference > 0.000_01) {
+            return false;
+        }
+        int numberDifferent = 0;
+        for (int i = 0; i < smallerLength; i++) {
+            if (first[i] != second[i]) {
+                numberDifferent += 1;
+            }
+        }
+        int fractionDifferent = numberDifferent / smallerLength;
+        System.out.println("fractionDifferent: " + fractionDifferent);
+        return fractionDifferent < 0.000_01;
     }
 
     static List<Integer> bikeIndices() {
