@@ -27,7 +27,6 @@ class SingleThreadedBikeServiceTest {
 
         byte[] expectedBytes = getExpectedImage(resourceHandle);
         assertArrayEquals(expectedBytes, bikeRenderingResult);
-        assertImagesSimilar(expectedBytes, bikeRenderingResult);
     }
 
     private static String getBikeXml(String resourceHandle) throws IOException {
@@ -38,10 +37,6 @@ class SingleThreadedBikeServiceTest {
     private static byte[] getExpectedImage(String resourceHandle) throws IOException {
         URL imageResource = getNonNullResource(resourceHandle.replace(".bcad", ".svg"));
         return Files.readAllBytes(Path.of(imageResource.getPath()));
-    }
-
-    private void assertImagesSimilar(byte[] expectedBytes, byte[] bikeRenderingResult) {
-        // TODO: implement this function
     }
 
     static List<Integer> bikeIndices() {
