@@ -4,10 +4,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.io.IOException;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -24,44 +21,27 @@ class SingleThreadedBikeServiceTest {
     @MethodSource("bikeIndices")
     void renderBike(int bikeIndex) throws IOException {
         String resourceHandle = "bikes/bike%s.bcad".formatted(bikeIndex);
-        URL bcadResource = getNonNullResource(resourceHandle);
-        URL imageResource = getNonNullResource(resourceHandle.replace(".bcad", ".svg"));
-        byte[] bikeRenderingResult = BIKE_SERVICE.renderBike(Files.readString(Path.of(bcadResource.getPath())));
+
+        byte[] bikeRenderingResult = BIKE_SERVICE.renderBike(getBikeXml(resourceHandle));
         assertNotEquals(0, bikeRenderingResult.length);
-        byte[] expectedBytes = Files.readAllBytes(Path.of(imageResource.getPath()));
-        assertTrue(similarArrays(
-                toCharArray(expectedBytes),
-                toCharArray(bikeRenderingResult)
-        ));
+
+        byte[] expectedBytes = getExpectedImage(resourceHandle);
+        assertArrayEquals(expectedBytes, bikeRenderingResult);
+        assertImagesSimilar(expectedBytes, bikeRenderingResult);
     }
 
-    private static char[] toCharArray(byte[] expectedBytes) {
-        return new String(expectedBytes, StandardCharsets.UTF_8).toCharArray();
+    private static String getBikeXml(String resourceHandle) throws IOException {
+        URL bcadResource = getNonNullResource(resourceHandle);
+        return Files.readString(Path.of(bcadResource.getPath()));
     }
 
-    private boolean similarArrays(char[] first, char[] second) {
-        if (first.length == 0 && second.length == 0) {
-            return true;
-        }
-        int smallerLength = Math.min(first.length, second.length);
-        int lengthDifference = Math.abs(first.length - second.length);
-        var fractionLengthDifference = BigDecimal.valueOf(lengthDifference)
-                .divide(BigDecimal.valueOf(smallerLength), RoundingMode.HALF_UP);
-        System.out.println("fractionLengthDifference: " + fractionLengthDifference);
-        if (fractionLengthDifference.compareTo(BigDecimal.valueOf(0.000_01)) > 0) {
-            return false;
-        }
-        int numberDifferent = 0;
-        for (int i = 0; i < smallerLength; i++) {
-            if (first[i] != second[i]) {
-                numberDifferent += 1;
-            }
-        }
-        System.out.println("Number different: " + numberDifferent);
-        System.out.println("Smaller length: " + smallerLength);
-        BigDecimal fractionDifference = BigDecimal.valueOf(numberDifferent).divide(BigDecimal.valueOf(smallerLength), RoundingMode.HALF_UP);
-        System.out.println("fractionDifferent: " + fractionDifference);
-        return fractionDifference.compareTo(BigDecimal.valueOf(0.000_01)) < 0;
+    private static byte[] getExpectedImage(String resourceHandle) throws IOException {
+        URL imageResource = getNonNullResource(resourceHandle.replace(".bcad", ".svg"));
+        return Files.readAllBytes(Path.of(imageResource.getPath()));
+    }
+
+    private void assertImagesSimilar(byte[] expectedBytes, byte[] bikeRenderingResult) {
+        // TODO: implement this function
     }
 
     static List<Integer> bikeIndices() {
@@ -73,7 +53,8 @@ class SingleThreadedBikeServiceTest {
     }
 
     static URL getNonNullResource(String resourceHandle) {
-        return Objects.requireNonNull(SingleThreadedBikeServiceTest.class.getClassLoader().getResource(resourceHandle), "Could not find resource " + resourceHandle);
+        return Objects.requireNonNull(SingleThreadedBikeServiceTest.class.getClassLoader().getResource(resourceHandle),
+                "Could not find resource " + resourceHandle);
     }
 
 }
