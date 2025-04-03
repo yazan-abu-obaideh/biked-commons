@@ -10,8 +10,17 @@ from biked_commons.exceptions import InternalError, check_internal_precondition
 from biked_commons.resource_utils import STANDARD_BIKE_RESOURCE, resource_path
 from biked_commons.xml_handling.cad_builder import BikeCadFileBuilder
 
-JAVA_BINARY = os.getenv("JAVA_PATH", "java")
 SERVER_START_TIMEOUT_SECONDS = int(os.getenv("RENDERING_SERVER_START_TIMEOUT_SECONDS", 60))
+
+
+def get_java_binary():
+    b = os.getenv("JAVA_HOME", "java")
+    if b.endswith("java"):
+        return b
+    return b + "/bin/java"
+
+
+JAVA_BINARY = get_java_binary()
 
 
 class RenderingClient:
