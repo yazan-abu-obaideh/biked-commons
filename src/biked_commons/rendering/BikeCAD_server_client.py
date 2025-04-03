@@ -16,8 +16,11 @@ SERVER_START_TIMEOUT_SECONDS = int(os.getenv("RENDERING_SERVER_START_TIMEOUT_SEC
 def get_java_binary():
     b = os.getenv("JAVA_HOME", "java")
     if b.endswith("java"):
-        return b
-    return b + "/bin/java"
+        res = b
+    else:
+        res = os.path.join(b, "bin", "java")
+    print(f"Using {res} as the Java binary")
+    return res
 
 
 JAVA_BINARY = get_java_binary()
