@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from build.lib.biked_commons.bike_embedding.embedding_predictor import EmbeddingPredictor
+from biked_commons.bike_embedding.embedding_predictor import EmbeddingPredictor
 
 predictor = EmbeddingPredictor()
 
