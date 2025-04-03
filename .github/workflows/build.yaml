@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DISPLAY: :99
-      RENDERER_TIMEOUT: 60
+      RENDERING_SERVER_START_TIMEOUT_SECONDS: 60
 
     steps:
       - uses: actions/checkout@v2
