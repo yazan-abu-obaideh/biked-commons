@@ -6,15 +6,17 @@ import time
 import psutil
 import requests
 
-from biked_commons.exceptions import InternalError
+from biked_commons.exceptions import InternalError, check_internal_precondition
 from biked_commons.resource_utils import STANDARD_BIKE_RESOURCE, resource_path
 from biked_commons.xml_handling.cad_builder import BikeCadFileBuilder
 
 JAVA_BINARY = os.getenv("JAVA_PATH", "java")
 SERVER_START_TIMEOUT_SECONDS = int(os.getenv("RENDERING_SERVER_START_TIMEOUT_SECONDS", 60))
 
+
 class RenderingClient:
     SERVER_PORT = 8080
+
     def __init__(self, cad_builder: BikeCadFileBuilder = BikeCadFileBuilder()):
         self.cad_builder = cad_builder
         self._xml_transformer = BikeCadFileBuilder()
@@ -24,7 +26,9 @@ class RenderingClient:
 
     def _start_server(self):
         if not self.check_server_health():
-            process = subprocess.Popen([JAVA_BINARY, "-jar", resource_path("BikeCAD-server.jar"), f"--server.port={self.SERVER_PORT}"])
+            print("Starting BikeCAD server...")
+            process = subprocess.Popen(
+                [JAVA_BINARY, "-jar", resource_path("BikeCAD-server.jar"), f"--server.port={self.SERVER_PORT}"])
             self._server_pid = process.pid
             seconds_waited = 0
             while not self.check_server_health():
@@ -32,15 +36,17 @@ class RenderingClient:
                 seconds_waited += 1
                 if seconds_waited > SERVER_START_TIMEOUT_SECONDS:
                     raise InternalError("Could not start server...")
+            print("BikeCAD server started.")
 
     def _kill_server(self):
         if self._server_pid and psutil.pid_exists(self._server_pid):
-            print("Server exists. Killing...")
+            print("BikeCAD Server exists. Killing...")
             psutil.Process(pid=self._server_pid).kill()
+            print("BikeCAD server killed successfully.")
 
     def check_server_health(self) -> bool:
         try:
-            health_response = requests.get(self._endpoint("/actuator/serverInformation"))
+            health_response = requests.get(self._endpoint("/actuator/serverInformation"), timeout=1)
         except Exception as ignored:
             return False
         if health_response.status_code != 200:
@@ -60,7 +66,9 @@ class RenderingClient:
         raise InternalError(f"Rendering request failed {result}")
 
     def _endpoint(self, suffix: str):
-        return f"http://localhost:{self.SERVER_PORT}{suffix}"
+        url = f"http://localhost:{self.SERVER_PORT}{suffix}"
+        check_internal_precondition(suffix.startswith("/"), f"Invalid url {url}")
+        return url
 
     def _read_standard_bike_xml(self, handler):
         with open(STANDARD_BIKE_RESOURCE) as file:
