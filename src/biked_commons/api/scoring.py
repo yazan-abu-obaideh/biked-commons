@@ -1,6 +1,6 @@
 import numpy as np
 
-from build.lib.biked_commons.bike_embedding.clip_embedding_calculator import ClipEmbeddingCalculatorImpl
+from biked_commons.bike_embedding.clip_embedding_calculator import ClipEmbeddingCalculatorImpl
 
 embedding_calculator = ClipEmbeddingCalculatorImpl()
 

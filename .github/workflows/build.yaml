@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DISPLAY: :99
-      RENDERER_TIMEOUT: 60
+      RENDERING_SERVER_START_TIMEOUT_SECONDS: 60
 
     steps:
       - uses: actions/checkout@v2
@@ -49,3 +49,23 @@ jobs:
         run: python3 -m build
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+
+  build-BikeCAD-server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: BikeCAD-server
+    env:
+      DISPLAY: :99
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+      - name: build Bike Console JAR as mvn dependency
+        run: cd BikeJar && ./build.sh
+      - name: Run tests
+        run: ./test.sh
