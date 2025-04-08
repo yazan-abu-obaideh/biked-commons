@@ -1,25 +1,31 @@
-[build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "biked-commons"
-version = "0.0.1b0"
-description = "Biked-Commons is a utility package which is useful for various BIKED-related projects, including MCD-Demo, BIKED-Integration, and others."
+version = "0.0.1"
+description = "Biked Commons is a package that offers various functions that are useful for working within the BIKED ecosystem."
+authors = [
+    {name = "Lyle Regenwetter & Yazan Abu Obaideh"}
+]
+license = {text = "MIT"}
 readme = "README.md"
-authors = [{ name = "Lyle Regenwetter & Yazan Abu Obaideh" }]
-license = { file = "LICENSE" }
-classifiers = [
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-]
-keywords = ["counterfactuals", "design", "multi-objective", "multiobjective", "machine-learning"]
+requires-python = ">=3.12,<4.0"
 dependencies = [
-    "beautifulsoup4",
-    "lxml"
+    "beautifulsoup4 (>=4.13.3,<5.0.0)",
+    "lxml (>=5.3.2,<6.0.0)",
+    "pandas (>=2.2.3,<3.0.0)",
+    "attrs (>=25.3.0,<26.0.0)",
+    "torch (>=2.6.0,<3.0.0)",
+    "pillow (>=11.1.0,<12.0.0)",
+    "transformers (>=4.51.1,<5.0.0)",
+    "dill (>=0.3.9,<0.4.0)",
+    "scikit-learn (>=1.6.1,<2.0.0)",
+    "psutil (>=7.0.0,<8.0.0)"
 ]
-requires-python = ">=3.8"
 
-[project.urls]
-Homepage = "https://github.com/yazan-abu-obaideh/biked-commons"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+
