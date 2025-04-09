@@ -37,7 +37,7 @@ class RenderingClient:
         return self.render(self._xml_transformer.build_cad_from_clips_object(target_bike, seed_bike_xml))
 
     def render(self, bike_xml: str):
-        endpoint = self._server_manager.endpoint(self._server_manager.SERVER_PORT, "/api/v1/render")
+        endpoint = self._server_manager.endpoint("/api/v1/render")
         result = requests.post(endpoint, data=bike_xml)
         if result.status_code == 200:
             return result.content
