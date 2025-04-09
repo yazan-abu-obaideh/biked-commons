@@ -1,39 +1,22 @@
-import os
-
 import requests
 
 from biked_commons.exceptions import InternalError
-from biked_commons.rendering.BikeCAD_server_manager import SingleThreadedBikeCadServerManager
+from biked_commons.rendering.BikeCAD_server_manager import SingleThreadedBikeCadServerManager, ServerManager
 from biked_commons.resource_utils import STANDARD_BIKE_RESOURCE
 from biked_commons.xml_handling.cad_builder import BikeCadFileBuilder
-
-SERVER_START_TIMEOUT_SECONDS = int(os.getenv("RENDERING_SERVER_START_TIMEOUT_SECONDS", 60))
-
-
-def get_java_binary():
-    b = os.getenv("JAVA_HOME", "java")
-    if b.endswith("java"):
-        res = b
-    else:
-        res = os.path.join(b, "bin", "java")
-    print(f"Using {res} as the Java binary")
-    return res
-
-
-JAVA_BINARY = get_java_binary()
 
 
 class RenderingClient:
 
-    def __init__(self, cad_builder: BikeCadFileBuilder = BikeCadFileBuilder()):
-        self.cad_builder = cad_builder
+    def __init__(self,
+                 server_manager: ServerManager):
         self._xml_transformer = BikeCadFileBuilder()
-        self._server_manager = SingleThreadedBikeCadServerManager()
+        self._server_manager = server_manager
 
-    def render_object(self, bike_object, seed_bike_xml: str):
-        return self.render(self._xml_transformer.build_cad_from_biked(bike_object, seed_bike_xml))
+    def render_biked(self, target_bike: dict, seed_bike_xml: str) -> bytes:
+        return self.render(self._xml_transformer.build_cad_from_biked(target_bike, seed_bike_xml))
 
-    def render_clips(self, target_bike: dict, seed_bike_xml: str):
+    def render_clips(self, target_bike: dict, seed_bike_xml: str) -> bytes:
         return self.render(self._xml_transformer.build_cad_from_clips_object(target_bike, seed_bike_xml))
 
     def render(self, bike_xml: str):
@@ -46,6 +29,3 @@ class RenderingClient:
     def _read_standard_bike_xml(self, handler):
         with open(STANDARD_BIKE_RESOURCE) as file:
             handler.set_xml(file.read())
-
-
-RENDERING_CLIENT_INSTANCE = RenderingClient()
