@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from biked_commons.api.rendering import SingleThreadedRenderer
+from biked_commons.api.rendering import RenderingEngine
 from biked_commons.resource_utils import STANDARD_BIKE_RESOURCE
 from utils_for_tests import path_of_test_resource
 
@@ -18,7 +18,7 @@ SAMPLE_CLIPS_OBJECT = SAMPLES["SAMPLE_CLIPS_OBJECT"]
 
 class RenderingTest(unittest.TestCase):
     def setUp(self):
-        self.renderer = SingleThreadedRenderer()
+        self.renderer = RenderingEngine()
         with open(STANDARD_BIKE_RESOURCE, "r") as file:
             self.standard_bike_xml = file.read()
 
