@@ -26,12 +26,12 @@ class RenderingEngine:
     def render_xml(self, bike_xml: str) -> RenderingResult:
         return RenderingResult(image_bytes=(self._render(bike_xml)))
 
-    def render_biked(self, biked: dict) -> RenderingResult:
-        xml = FILE_BUILDER.build_cad_from_biked(biked, self.standard_bike_xml)
+    def render_biked(self, biked: dict, show_rider=False) -> RenderingResult:
+        xml = FILE_BUILDER.build_cad_from_biked(biked, self.standard_bike_xml, show_rider)
         return RenderingResult(image_bytes=(self._render(xml)))
 
-    def render_clip(self, clip: dict) -> RenderingResult:
-        xml = FILE_BUILDER.build_cad_from_clips_object(clip, self.standard_bike_xml)
+    def render_clip(self, clip: dict, show_rider=False) -> RenderingResult:
+        xml = FILE_BUILDER.build_cad_from_clip(clip, self.standard_bike_xml, show_rider)
         return RenderingResult(image_bytes=(self._render(xml)))
 
     def _render(self, xml: str) -> bytes:
