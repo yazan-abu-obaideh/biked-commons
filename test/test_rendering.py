@@ -26,6 +26,10 @@ class RenderingTest(unittest.TestCase):
         actual_result = self.renderer.render_biked(SAMPLE_BIKE_OBJECT)
         self.assertIsNotNone(actual_result.image_bytes)
 
+    def test_render_with_rider(self):
+        self.assertIsNotNone(self.renderer.render_biked(SAMPLE_BIKE_OBJECT, True))
+        self.assertIsNotNone(self.renderer.render_clip(SAMPLE_CLIPS_OBJECT, True))
+
     def test_render_bike_xml_file(self):
         actual_result = self.renderer.render_xml(self.standard_bike_xml)
         self.assertIsNotNone(actual_result.image_bytes)

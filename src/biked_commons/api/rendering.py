@@ -17,11 +17,11 @@ class RenderingResult:
 class RenderingEngine:
     def __init__(self,
                  number_rendering_servers: int,
-                 timeout_seconds: int
+                 server_init_timeout_seconds: int
                  ):
         with open(STANDARD_BIKE_RESOURCE, "r") as file:
             self.standard_bike_xml = file.read()
-        self._rendering_client = self._init_rendering_client(number_rendering_servers, timeout_seconds)
+        self._rendering_client = self._init_rendering_client(number_rendering_servers, server_init_timeout_seconds)
 
     def render_xml(self, bike_xml: str) -> RenderingResult:
         return RenderingResult(image_bytes=(self._render(bike_xml)))
