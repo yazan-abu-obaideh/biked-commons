@@ -18,7 +18,7 @@ SAMPLE_CLIPS_OBJECT = SAMPLES["SAMPLE_CLIPS_OBJECT"]
 
 class RenderingTest(unittest.TestCase):
     def setUp(self):
-        self.renderer = RenderingEngine()
+        self.renderer = RenderingEngine(1, 60)
         with open(STANDARD_BIKE_RESOURCE, "r") as file:
             self.standard_bike_xml = file.read()
 

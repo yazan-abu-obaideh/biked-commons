@@ -13,8 +13,6 @@ import requests
 from biked_commons.exceptions import InternalError, check_internal_precondition
 from biked_commons.resource_utils import resource_path
 
-SERVER_START_TIMEOUT_SECONDS = int(os.getenv("RENDERING_SERVER_START_TIMEOUT_SECONDS", 60))
-
 
 def get_java_binary():
     b = os.getenv("JAVA_HOME", "java")
@@ -38,21 +36,24 @@ class ServerManager(metaclass=ABCMeta):
     def endpoint(self, suffix: str) -> str:
         pass
 
-    def _start_server(self, port: int) -> None:
+    def _start_server(self, port: int, timeout_seconds: int) -> None:
         if not self._check_server_health(port):
             print(f"Starting BikeCAD server on port {port}...")
             process = subprocess.Popen(
                 [JAVA_BINARY, "-jar", resource_path("BikeCAD-server.jar"), f"--server.port={port}"])
             self._server_pids.append(process.pid)
-            self._await_start_or_throw(port)
+            self._await_start_or_throw(port, timeout_seconds)
             print(f"BikeCAD server started on port {port}.")
 
-    def _await_start_or_throw(self, port: int) -> None:
+    def _await_start_or_throw(self,
+                              port: int,
+                              timeout_seconds: int
+                              ) -> None:
         seconds_waited = 0
         while not self._check_server_health(port):
             time.sleep(1)
             seconds_waited += 1
-            if seconds_waited > SERVER_START_TIMEOUT_SECONDS:
+            if seconds_waited > timeout_seconds:
                 raise InternalError(f"Could not start server on port {port}...")
 
     def _kill_live_servers(self) -> None:
@@ -82,9 +83,9 @@ class ServerManager(metaclass=ABCMeta):
 class SingleThreadedBikeCadServerManager(ServerManager):
     SERVER_PORT = 8080
 
-    def __init__(self):
+    def __init__(self, timeout_seconds: int):
         super().__init__()
-        self._start_server(self.SERVER_PORT)
+        self._start_server(self.SERVER_PORT, timeout_seconds)
 
     def endpoint(self, suffix: str) -> str:
         return self._endpoint(self.SERVER_PORT, suffix)
@@ -97,14 +98,14 @@ class MultiThreadedBikeCadServerManager(ServerManager):
         super().__init__()
         self._port_range = [self.STARTING_PORT + i for i in range(number_servers)]
         self._request_count = 0  # used for round-robin load-balancing :D
-        futures = self._start_servers(number_servers)
+        futures = self._start_servers(number_servers, timeout_seconds)
         self._await_servers(futures, timeout_seconds)
 
-    def _start_servers(self, number_servers: int) -> List[Future]:
+    def _start_servers(self, number_servers: int, timeout_seconds: int) -> List[Future]:
         executor = ThreadPoolExecutor(max_workers=number_servers)
         futures = []
         for port in self._port_range:
-            futures.append(executor.submit(self._start_server, port))
+            futures.append(executor.submit(self._start_server, port, timeout_seconds))
         return futures
 
     def endpoint(self, suffix: str) -> str:
