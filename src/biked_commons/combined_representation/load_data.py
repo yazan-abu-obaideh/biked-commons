@@ -4,7 +4,7 @@ from sklearn.preprocessing import StandardScaler
 
 from biked_commons.resource_utils import resource_path
 
-ALL_STRUCTURAL_DATASET = resource_path('all_structural_data_aug.csv')
+ALL_STRUCTURAL_DATASET = resource_path('datasets/raw_datasets/structure.csv')
 
 
 def load_augmented_framed_dataset(to_magnitudes=False) -> (

@@ -33,7 +33,7 @@ def _framed_description():
 
 
 def _clip_description():
-    clips = pd.read_csv(resource_path('clip_sBIKED_processed.csv'), index_col=0)
+    clips = pd.read_csv(resource_path('datasets/raw_datasets/clip_sBIKED_processed.csv'), index_col=0)
     clips.index = [str(idx) for idx in clips.index]
     conversions = []
     for master, clip in __MASTER_TO_CLIPS_M_TO_MM.items():
@@ -52,7 +52,7 @@ def _clip_description():
 
 
 def _bike_fit_description():
-    bike_fit = (pd.read_csv(resource_path('bike_vector_df_with_id.csv'),
+    bike_fit = (pd.read_csv(resource_path('datasets/raw_datasets/bike_vector_df_with_id.csv'),
                             index_col='Bike ID')
                 .drop(columns=['Unnamed: 0']))
     bike_fit.index = [str(idx) for idx in bike_fit.index]
