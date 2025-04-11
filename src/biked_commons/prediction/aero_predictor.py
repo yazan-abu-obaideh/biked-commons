@@ -104,6 +104,8 @@ class DNN(nn.Module):
         self.dropout = nn.Dropout(0.2)
         self.mean = mean
         self.std = std
+        # self.register_buffer("mean", mean)
+        # self.register_buffer("std", std)
 
     def forward(self, x):
         # Normalize the input
