@@ -1,0 +1,1 @@
+mvn install:install-file -Dfile=ConsoleBikeCAD.jar -DgroupId=com.bikecad -DartifactId=bikejar -Dversion=1.0 -Dpackaging=jar
