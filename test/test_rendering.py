@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from biked_commons.api.rendering import RenderingEngine
+from biked_commons.api.rendering import RenderingEngine, DEFAULT_RIDER
 from biked_commons.resource_utils import STANDARD_BIKE_RESOURCE
 from utils_for_tests import path_of_test_resource
 
@@ -27,8 +27,8 @@ class RenderingTest(unittest.TestCase):
         self.assertIsNotNone(actual_result.image_bytes)
 
     def test_render_with_rider(self):
-        self.assertIsNotNone(self.renderer.render_biked(SAMPLE_BIKE_OBJECT, True))
-        self.assertIsNotNone(self.renderer.render_clip(SAMPLE_CLIPS_OBJECT, True))
+        self.assertIsNotNone(self.renderer.render_biked(SAMPLE_BIKE_OBJECT, DEFAULT_RIDER))
+        self.assertIsNotNone(self.renderer.render_clip(SAMPLE_CLIPS_OBJECT, DEFAULT_RIDER))
 
     def test_render_bike_xml_file(self):
         actual_result = self.renderer.render_xml(self.standard_bike_xml)
