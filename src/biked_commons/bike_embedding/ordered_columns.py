@@ -1,3 +1,5 @@
+#TODO: Rename an dmove to combined_representation
+
 ORDERED_COLUMNS = ['CS textfield', 'BB textfield', 'Stack', 'Head angle', 'Head tube length textfield', 'Seat stay '
                                                                                                         'junction0',
                    'Seat tube length', 'Seat angle', 'DT Length', 'BB diameter', 'ttd', 'dtd', 'csd', 'ssd',

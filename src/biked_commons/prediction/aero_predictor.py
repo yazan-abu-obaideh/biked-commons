@@ -104,14 +104,11 @@ class DNN(nn.Module):
         self.dropout = nn.Dropout(0.2)
         self.mean = mean
         self.std = std
-        # self.register_buffer("mean", mean)
-        # self.register_buffer("std", std)
 
     def forward(self, x):
-        # Normalize the input
-        features = calculate_features(x)
+        features = calculate_features(x) #feature engineering
         x = torch.cat((x, features), dim=1)
-        x = (x - self.mean) / self.std
+        x = (x - self.mean) / self.std #normalize features
         x = self.relu(self.fc1(x))
         x = self.dropout(x)
         x = self.relu(self.fc2(x))
