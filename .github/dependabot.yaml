@@ -1,6 +1,6 @@
 version: 2
 updates:
-  - package-ecosystem: "mvn"
+  - package-ecosystem: "maven"
     directory: "/BikeCAD-server"
     schedule:
       interval: "monthly"
