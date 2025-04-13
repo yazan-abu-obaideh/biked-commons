@@ -8,4 +8,6 @@ The functions offered include:
 - Bike image to embedding
 - BikeCAD xml to parametric representation and vice versa
 
-And more. Please note that `Java 17` or newer is required for the rendering. All Python requirements are listed in `requirements.txt`.
+And more. Please note that `Java 17` or newer is required for the rendering. The project uses poetry for dependency management.
+To install all required python dependencies, install poetry on your machine (or pip install it in your environment) and run 
+`poetry install` or `python -m poetry install` respectively.
