@@ -3,10 +3,11 @@ from typing import List, Callable
 
 from biked_commons import resource_utils
 from biked_commons.bike_embedding import ordered_columns
+from biked_commons.prediction.usability_predictors import UsabilityPredictorBinary, UsabilityPredictorContinuous
+from biked_commons.usability import usability_ordered_columns
 
 import pandas as pd
 import torch
-
 
 
 class EvaluationFunction(ABC):
@@ -91,6 +92,41 @@ class AestheticsEvaluator(EvaluationFunction):
             ...
         predictions = self.model(designs)
         return predictions
+    
+
+class UsabilityEvaluator(EvaluationFunction):
+    def __init__(self, target_type = 'cont'):
+        self.target_type = target_type
+        if target_type == 'cont':
+            self.model = UsabilityPredictorContinuous()
+        elif target_type == 'binary':
+            self.model = UsabilityPredictorBinary()
+        else:
+            raise ValueError("Invalid target_type. Choose either 'cont' or 'binary'.")
+        
+
+    def friendly_name(self) -> str: 
+        if self.target_type == 'cont':
+            return "Usability Evaluator (Continuous)"
+        elif self.target_type == 'binary':
+            return "Usability Evaluator (Binary)"
+
+    def variable_names(self) -> List[str]:
+        return usability_ordered_columns.ORDERED_COLUMNS
+    
+    def return_names(self) -> List[str]:
+        if self.target_type == 'cont':
+            return ['Usability Score - 0 to 1']
+        elif self.target_type == 'binary':
+            return ['Usability Class - 0 or 1']
+
+    def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
+        if self.target_type == 'cont':
+            return self.model.predict(designs)
+        elif self.target_type == 'binary':
+            x_input = designs.detach().cpu().numpy()
+            predictions = self.model.predict(x_input)
+            return torch.tensor(predictions, dtype=torch.float32, device=designs.device)
     
 
 def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], column_names: List[str]):
