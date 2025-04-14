@@ -43,6 +43,8 @@ def construct_tensor_validator(validation_functions: List[ValidationFunction], c
         A function that takes a PyTorch tensor of designs and returns a PyTorch tensor of validation results.
     """
 
+    column_names = list(column_names)
+
     def validate_tensor(designs: torch.Tensor) -> torch.Tensor:
         """
         Applies the validation functions to the given tensor and returns a tensor of results.
@@ -63,21 +65,25 @@ def construct_tensor_validator(validation_functions: List[ValidationFunction], c
         results_tensor = torch.zeros((n, v), dtype=torch.float32, device=designs.device)
 
         for i, validation_function in enumerate(validation_functions):
-            try:
-                # Get the indices of the required variables for this function
-                var_indices = [column_names.index(var) for var in validation_function.variable_names()]
+            # try:
 
-                # Extract the relevant slices from the tensor
-                sliced_designs = designs[:, var_indices]
 
-                # Apply validation
-                res = validation_function.validate(sliced_designs)  # Expected to return a torch.Tensor
+            # Get the indices of the required variables for this function
+            var_indices = [column_names.index(var) for var in validation_function.variable_names()]
 
-                # Store results
-                results_tensor[:, i] = res.flatten()
-            except Exception as e:
-                print(f"Validation function [{validation_function.friendly_name()}] encountered exception [{e}]")
-                results_tensor[:, i] = 1  # Mark all designs as invalid in case of failure
+            # Extract the relevant slices from the tensor
+            sliced_designs = designs[:, var_indices]
+
+            # Apply validation
+            res = validation_function.validate(sliced_designs)  # Expected to return a torch.Tensor
+
+            # Store results
+            results_tensor[:, i] = res.flatten()
+
+
+            # except Exception as e:
+            #     print(f"Validation function [{validation_function.friendly_name()}] encountered exception [{e}]")
+            #     results_tensor[:, i] = 1  # Mark all designs as invalid in case of failure
 
         return results_tensor
 
