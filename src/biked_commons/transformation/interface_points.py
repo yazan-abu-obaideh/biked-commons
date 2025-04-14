@@ -8,10 +8,10 @@ import torch
 
 
 def calculate_interace_points_df(df):
-    columns = ["Components/General_Handlebar_from_BB_(X)", "Components/General_Handlebar_from_BB_(Y)",
-               "Components/Handlebar_Style", "Components/Handlebar_A", "Components/Handlebar_B",
-               "Components/Handlebar_C", "Components/Handlebar_angle",
-               "Components/General_Saddle_from_BB_(X)", "Components/General_Saddle_from_BB_(Y)", "Components/Cranks_A"]
+    columns = ["Stack",
+               "Handlebar style OHCLASS: 0", "Handlebar style OHCLASS: 1", "Handlebar style OHCLASS: 2",
+               "Seat angle", "Saddle height", "Head tube length textfield", "Head tube lower extension2", 
+               "Head angle", "DT Length"]
     x = df[columns].values
     x = torch.tensor(x, dtype=torch.float32)
     y = calculate_interface_points(x)
@@ -19,47 +19,82 @@ def calculate_interace_points_df(df):
     return y
 
 
-def calculate_interface_points(x, device="cpu", dtype=torch.float32):
+def calculate_interface_points(x, dtype=torch.float32):
     # TODO: consider one-hot compatible version?
+    stack = x[:, 0]
+    oh0 = x[:, 1]  # Handlebar style OHCLASS: 0
+    oh1 = x[:, 2]  # Handlebar style OHCLASS: 1
+    oh2 = x[:, 3]  # Handlebar style OHCLASS: 2
+
+    mask0 = torch.logical_and(oh0 > oh1, oh0 > oh2).float()
+    mask1 = torch.logical_and(oh1 > oh0, oh1 > oh2).float()
+    mask2 = torch.logical_and(oh2 > oh0, oh2 > oh1).float()
+
+    seat_angle = x[:, 4] * math.pi / 180  # Convert angles to radians
+    saddle_height = x[:, 5]
+    crank_length = torch.tensor(172.5) # TODO : make this a parameter once it is added to representation
+    crank_length = crank_length * torch.ones_like(saddle_height)  # Crank length in mm
+
+    HTL = x[:, 6]  # Head tube length textfield
+    HTLX = x[:, 7]  # Head tube lower extension2
+    HTA = x[:, 8] * math.pi / 180 # Head tube angle
+    DTL = x[:, 9]  # DT Length
+    DTJY = stack - (HTL - HTLX) * torch.sin(HTA)
+    DTJX = torch.sqrt(DTL ** 2 - DTJY ** 2)
+    handlebar_mount_x = DTJX - (HTL - HTLX) * torch.cos(HTA)
+    handlebar_mount_y = stack
+
+    handle_angle = torch.tensor(12.0 * math.pi / 180, dtype = dtype)
+    # road_bar_reach = 80.0
+    road_bar_drop = torch.tensor(128.0, dtype = dtype)  # mm
+    hbarextend = torch.tensor(60.0, dtype = dtype)
+    mountain_bar_sweep = torch.tensor(16.4, dtype = dtype)
+    mountain_bar_rise = torch.tensor(10.0, dtype = dtype)
+    mtndrop = torch.tensor(10.0, dtype = dtype)
+    bullhorn_reach = torch.tensor(150, dtype = dtype)
+    bullhorn_rise = torch.tensor(50.0, dtype = dtype)
+    bullhorn_slant = torch.tensor(40*math.pi/180, dtype = dtype)  # radians
+
+
+    #seat angle is angle between horizontal and line to saddle
+    hip_x = saddle_height / torch.tan(seat_angle) 
+    hip_y = saddle_height + 0.05  # hip_y (offset for hip not being directly on saddle)
 
     numfeat = x.shape[0]
 
-    # Extract relevant columns
-    ht = x[:, 2]
-    ang = x[:, 6] * math.pi / 180  # Convert angles to radians
 
-    # Initialize posx and posy tensors
+    # posx and pos y are offset of hand position from handlbar mount
     posx = torch.zeros(numfeat, dtype=torch.float32)
     posy = torch.zeros(numfeat, dtype=torch.float32)
 
-    # Case ht == 2
-    mask2 = ht == 2
-    mC = x[:, 5] / 2
-    mA = x[:, 3] - 40
-    posx[mask2] = mA[mask2] * torch.cos(ang[mask2]) - mC[mask2] * torch.sin(ang[mask2])
-    posy[mask2] = mA[mask2] * torch.sin(ang[mask2]) + mC[mask2] * torch.cos(ang[mask2])
+    # Precompute common trig terms
+    cos_angle = torch.cos(handle_angle)
+    sin_angle = torch.sin(handle_angle)
 
-    # Case ht == 1
-    mask1 = ht == 1
-    v1 = x[:, 4] + x[:, 5]
-    h1 = x[:, 3]
-    posx[mask1] = -h1[mask1] * torch.cos(ang[mask1]) - v1[mask1] * torch.sin(ang[mask1])
-    posy[mask1] = -h1[mask1] * torch.sin(ang[mask1]) + v1[mask1] * torch.cos(ang[mask1])
+    #bullhorns
+    mC = bullhorn_rise - 60 * torch.sin(bullhorn_slant + handle_angle)
+    mA = bullhorn_reach - 60 * torch.cos(bullhorn_slant + handle_angle)
+    posx += mask2 * (mA * cos_angle - mC * sin_angle)
+    posy += mask2 * (mA * sin_angle + mC * cos_angle)
 
-    # Case ht == 0
-    mask0 = ht == 0
-    v0 = x[:, 4]
-    h0 = x[:, 5] - 60
-    posx[mask0] = -h0[mask0] * torch.cos(ang[mask0]) + v0[mask0] * torch.sin(ang[mask0])
-    posy[mask0] = -h0[mask0] * torch.sin(ang[mask0]) - v0[mask0] * torch.cos(ang[mask0])
+    #mountain bar
+    v1 = mountain_bar_rise + mtndrop
+    h1 = mountain_bar_sweep
+    posx += mask1 * (-h1 * cos_angle - v1 * sin_angle)
+    posy += mask1 * (-h1 * sin_angle + v1 * cos_angle)
 
-    # Construct y tensor
-    y = torch.zeros((numfeat, 5), dtype=dtype, device=device)
-    y[:, 0] = x[:, 0] + posx  # hand_x
-    y[:, 1] = x[:, 1] + posy  # hand_y
-    y[:, 2] = x[:, 7]  # hip_x
-    y[:, 3] = x[:, 8] + 0.05  # hip_y (offset for hip not being directly on saddle)
-    y[:, 4] = x[:, 9]  # crank_length
+    #drop bar
+    v0 = road_bar_drop
+    h0 = hbarextend - 60 
+    posx += mask0 * (-h0 * cos_angle + v0 * sin_angle)
+    posy += mask0 * (-h0 * sin_angle - v0 * cos_angle)
 
+
+    hand_x = handlebar_mount_x + posx  # hand_x
+    hand_y = handlebar_mount_y + posy  # hand_y
+    
+
+    y = [hand_x, hand_y, hip_x, hip_y, crank_length]
+    y = torch.stack(y, dim=1)  # Stack the tensors along the second dimension
     y = y / 1000  # Convert to meters
     return y
