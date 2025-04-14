@@ -6,7 +6,7 @@ import torch
 from sklearn import preprocessing
 
 from biked_commons.resource_utils import resource_path
-from biked_commons.prediction.usability_predictors import MLP
+from biked_commons.usability.mlp_model import MLP
 from biked_commons.usability.usability_ordered_columns import ORDERED_COLUMNS
 
 

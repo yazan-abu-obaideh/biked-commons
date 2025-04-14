@@ -128,62 +128,53 @@ class UsabilityEvaluator(EvaluationFunction):
             predictions = self.model.predict(x_input)
             return torch.tensor(predictions, dtype=torch.float32, device=designs.device)
     
-
 def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], column_names: List[str]):
 
     column_names = list(column_names)
 
+    # Flatten all return names across evaluators
+    all_return_names = []
+    for vf in evaluation_functions:
+        all_return_names.extend(vf.return_names())
+
     def evaluate_tensor(designs: torch.Tensor, conditioning={}) -> torch.Tensor:
-
         n = designs.shape[0]
-        v = len(evaluation_functions)
+        total_outputs = sum(len(vf.return_names()) for vf in evaluation_functions)
+        results_tensor = torch.zeros((n, total_outputs), dtype=torch.float32, device=designs.device)
 
-        # Initialize results tensor with zeros (default: valid)
-        results_tensor = torch.zeros((n, v), dtype=torch.float32, device=designs.device)
-
-        for i, evaluation_function in enumerate(evaluation_functions):
-            # try:
-
-
-            # Get the indices of the required variables for this function
-            var_indices = [column_names.index(var) for var in evaluation_function.variable_names()]
-
-            # Extract the relevant slices from the tensor
+        current_col = 0
+        for vf in evaluation_functions:
+            var_indices = [column_names.index(var) for var in vf.variable_names()]
             sliced_designs = designs[:, var_indices]
 
-            # Apply validation
-            res = evaluation_function.validate(sliced_designs, conditioning)  # Expected to return a torch.Tensor
+            res = vf.evaluate(sliced_designs, conditioning)  # Expect shape (n,) or (n, k)
 
-            # Store results
-            results_tensor[:, i] = res.flatten()
+            if res.dim() == 1:
+                res = res.unsqueeze(1)
+
+            num_outputs = res.shape[1]
+            results_tensor[:, current_col:current_col + num_outputs] = res
+            current_col += num_outputs
 
         return results_tensor
 
-    return evaluate_tensor
-
-
+    return evaluate_tensor, all_return_names
 
 def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]):
 
-    # First, construct the tensor-based validator (this one doesn't need column mapping)
     def evaluate_dataframe(designs: pd.DataFrame, conditioning={}) -> pd.DataFrame:
+        designs_tensor = torch.tensor(designs.values, dtype=torch.float32)
+        tensor_evaluator, return_names = construct_tensor_evaluator(evaluation_functions, list(designs.columns))
+        results_tensor = tensor_evaluator(designs_tensor, conditioning)
 
-        # Convert DataFrame to a PyTorch tensor (float32)
-        designs_tensor = torch.tensor(designs.to_numpy(), dtype=torch.float32)
-
-        # Use the tensor validator (construct it dynamically based on DataFrame columns)
-        tensor_validator = construct_tensor_evaluator(evaluation_functions, list(designs.columns))
-        results_tensor = tensor_validator(designs_tensor, conditioning)
-
-        # Convert results back to a DataFrame
         results_df = pd.DataFrame(
-            results_tensor.numpy(),  # Convert tensor to NumPy
-            columns=[vf.friendly_name() for vf in evaluation_functions],
-            index=designs.index  # Preserve original index
+            results_tensor.detach().cpu().numpy(),
+            columns=return_names,
+            index=designs.index
         )
 
         return results_df
 
     return evaluate_dataframe
-                                  
+
 
