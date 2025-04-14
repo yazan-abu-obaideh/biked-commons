@@ -20,7 +20,6 @@ def calculate_interace_points_df(df):
 
 
 def calculate_interface_points(x, dtype=torch.float32):
-    # TODO: consider one-hot compatible version?
     stack = x[:, 0]
     oh0 = x[:, 1]  # Handlebar style OHCLASS: 0
     oh1 = x[:, 2]  # Handlebar style OHCLASS: 1
@@ -58,7 +57,7 @@ def calculate_interface_points(x, dtype=torch.float32):
 
     #seat angle is angle between horizontal and line to saddle
     hip_x = saddle_height / torch.tan(seat_angle) 
-    hip_y = saddle_height + 0.05  # hip_y (offset for hip not being directly on saddle)
+    hip_y = saddle_height
 
     numfeat = x.shape[0]
 
@@ -97,4 +96,12 @@ def calculate_interface_points(x, dtype=torch.float32):
     y = [hand_x, hand_y, hip_x, hip_y, crank_length]
     y = torch.stack(y, dim=1)  # Stack the tensors along the second dimension
     y = y / 1000  # Convert to meters
+
+    #offsets of hip position vs top of seatpost (from bikeCAD)
+    hip_x = hip_x + 31.0  
+    hip_y = hip_y + 50  
+
+    #offsets from shoe thickness (from bikeCAD)
+    hip_y = hip_y - 23
+    hand_y = hand_y - 23
     return y

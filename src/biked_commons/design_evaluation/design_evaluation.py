@@ -1,14 +1,17 @@
 from abc import abstractmethod, ABC
 from typing import List
+import numpy as np
+import pandas as pd
+import torch
 
 from biked_commons import resource_utils
 from biked_commons.bike_embedding import ordered_columns
 from biked_commons.prediction.usability_predictors import UsabilityPredictorBinary, UsabilityPredictorContinuous
 from biked_commons.usability import usability_ordered_columns
 from biked_commons.transformation import interface_points
+from biked_commons.ergonomics import joint_angles
 
-import pandas as pd
-import torch
+
 
 
 class EvaluationFunction(ABC):
@@ -83,6 +86,46 @@ class AestheticsEvaluator(EvaluationFunction):
         elif self.mode == "Text":
             ...
         predictions = self.model(designs)
+        return predictions
+
+class ErgonomicsEvaluator(EvaluationFunction):
+    def __init__(self, device="cpu", dtype=torch.float32):
+        super().__init__(device, dtype)
+    def variable_names(self) -> List[str]:
+        return [
+            "Stack",
+            "Handlebar style OHCLASS: 0", "Handlebar style OHCLASS: 1", "Handlebar style OHCLASS: 2",
+            "Seat angle", "Saddle height", "Head tube length textfield", "Head tube lower extension2",
+            "Head angle", "DT Length"
+        ]
+
+    def return_names(self) -> List[str]:
+        return ['Knee Angle Error', 'Hip Angle Error', "Arm Angle Error"]
+
+    def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
+        assert "Rider" in conditioning, "Rider dimensions must be provided in conditioning to calculate ergonomics."
+        rider_dims = conditioning["Rider"]
+        if rider_dims.shape[0] == 1:
+            rider_dims = rider_dims.expand(designs.shape[0], -1)
+
+        assert "Use Case" in conditioning, "Use Case must be provided in conditioning to calculate ergonomics."
+        use_case = conditioning["Use Case"]
+        
+        allowed_use_cases = {"road", "mtb", "commute"}
+        if isinstance(use_case, str):
+            if use_case not in allowed_use_cases:
+                raise ValueError("Invalid use case. Choose either 'road', 'mtb', or 'commute'.")
+            use_case = [use_case] * designs.shape[0]
+        elif isinstance(use_case, (list, np.ndarray)):
+            if len(use_case) != designs.shape[0]:
+                raise ValueError("Length of use case list must match number of designs.")
+            if not all(u in allowed_use_cases for u in use_case):
+                raise ValueError("Invalid use case in list. All entries must be 'road', 'mtb', or 'commute'.")
+        else:
+            raise TypeError("Use Case must be a string or a list/array of strings.")
+
+        int_pts = interface_points.calculate_interface_points(designs)
+        predictions = joint_angles.adjusted_nll(int_pts, rider_dims, use_case)
         return predictions
 
 
