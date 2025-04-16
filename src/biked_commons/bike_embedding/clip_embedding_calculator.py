@@ -3,6 +3,7 @@ import abc
 import numpy as np
 from PIL import Image
 from transformers import CLIPProcessor, CLIPTokenizerFast, CLIPModel
+from torchvision import transforms
 
 _DEVICE = "cuda"
 _MODEL_ID = "openai/clip-vit-base-patch32"
@@ -39,3 +40,17 @@ class ClipEmbeddingCalculatorImpl(ClipEmbeddingCalculator):
 
     def _to_numpy_array(self, embedding_tensor):
         return embedding_tensor.detach().numpy().reshape((512,))
+
+def get_augmented_views_gpu(images_tensor):
+    transform = transforms.RandomApply([
+                                        transforms.RandomHorizontalFlip(),
+                                        transforms.RandomAdjustSharpness(0.2), 
+                                        transforms.RandomAdjustSharpness(2), 
+                                        transforms.RandomPerspective(fill=(0, 0, 0)),
+                                        transforms.RandomRotation(degrees = 45, fill= (0, 0, 0)), 
+                                       #  transforms.ColorJitter(brightness=0.1, contrast = 0.1, saturation=0.1, hue=0.0),
+                                       ],p=1)
+    res = transform(images_tensor.cuda()).cpu()
+    return res
+
+
