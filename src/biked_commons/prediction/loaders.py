@@ -21,9 +21,10 @@ def load_validity():
     X_train = pd.read_csv(resource_path('datasets/split_datasets/validity_X_train.csv'), index_col=0)
     Y_train = pd.read_csv(resource_path('datasets/split_datasets/validity_Y_train.csv'), index_col=0)
     return X_train, Y_train
-def load_structure():
+def load_structure(one_hot: bool = False):
     X_train = pd.read_csv(resource_path('datasets/split_datasets/structure_X_train.csv'), index_col=0)
     Y_train = pd.read_csv(resource_path('datasets/split_datasets/structure_Y_train.csv'), index_col=0)
+
     return X_train, Y_train
 
 def load_aero():

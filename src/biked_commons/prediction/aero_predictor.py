@@ -6,7 +6,7 @@ import dill
 from biked_commons.resource_utils import models_and_scalers_path
 from biked_commons.prediction.prediction_utils import TorchStandardScaler
 
-def calculate_features(X):
+def calculate_features(X, device="cpu"):
     def law_of_cos(a, b, c):
         return (a ** 2 + b ** 2 - c ** 2) / (2 * a * b)
 
@@ -23,11 +23,11 @@ def calculate_features(X):
     torso_width = X[:, 10]
 
     #some parameters as defined in the CAD model
-    head_diameter = 0.25
-    lower_leg_width = 0.12
-    arm_width = 0.1
-    upper_leg_width = (torso_width/2 - 0.16)/2 + 0.14
-    neck_width = 0.12
+    head_diameter = torch.tensor(0.25, device=device)
+    lower_leg_width = torch.tensor(0.12, device=device)
+    arm_width = torch.tensor(0.1, device=device)
+    upper_leg_width = torch.tensor((torso_width/2 - 0.16)/2 + 0.14, device=device)
+    neck_width = torch.tensor(0.12, device=device)
 
     head_surface_area = head_diameter * head_diameter * math.pi/4 *torch.ones_like(neck_and_head_length) # surface area of the head
 
@@ -95,26 +95,20 @@ def calculate_features(X):
 
     features = torch.stack([frontal_surface_area, torso_surface_area, leg_surface_area, arm_surface_area, neck_surface_area])
 
-    return features.T
+    X = torch.cat((X, features.T), dim=1)
+    return X
 
 class AeroPreprocessor(nn.Module):
-    def __init__(self, scaler_state_path: str, device: torch.device = None):
+    def __init__(self, device: torch.device = None):
         super().__init__()
+        scaler_path = models_and_scalers_path("aero_scaler.pt")
         self.device = device or torch.device('cpu')
-        self.scaler_state_path = scaler_state_path
-        self.scaler = None
-
-    def _init_scaler(self):
-        if self.scaler is None:
-            self.scaler = TorchStandardScaler().to(self.device)
-            state_dict = torch.load(self.scaler_state_path, map_location=self.device)
-            self.scaler.load_state_dict(state_dict)
-            self.scaler.fitted = True
+        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device)
+        self.scaler.to(self.device)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        self._init_scaler()
-        x = x.to(self.device)
-        feats = calculate_features(x)
-        return self.scaler(feats)
+        x = calculate_features(x, self.device)
+        return self.scaler(x)
 
     __call__ = forward
+

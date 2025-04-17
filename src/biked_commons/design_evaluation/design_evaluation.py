@@ -6,12 +6,13 @@ import torch
 import torch.nn.functional as F
 import dill
 
-from biked_commons import resource_utils
-from biked_commons.bike_embedding import ordered_columns, clip_embedding_calculator, embedding_predictor
+from biked_commons.bike_embedding import ordered_columns, clip_embedding_calculator
 from biked_commons.prediction.usability_predictors import UsabilityPredictorBinary, UsabilityPredictorContinuous
 from biked_commons.usability import usability_ordered_columns
 from biked_commons.transformation import interface_points
 from biked_commons.ergonomics import joint_angles
+from biked_commons.prediction import aero_predictor, clip_predictor
+from biked_commons.resource_utils import models_and_scalers_path
 
 
 
@@ -37,8 +38,9 @@ class EvaluationFunction(ABC):
 class AeroEvaluator(EvaluationFunction):
     def __init__(self, device="cpu", dtype=torch.float32):
         super().__init__(device, dtype)
-        model_path = resource_utils.resource_path("models") + '/aero.pth'
+        model_path = models_and_scalers_path("aero_model.pt")
         self.model = torch.load(model_path).to(self.device)
+        self.preprocessor = aero_predictor.AeroPreprocessor(device)
 
     def variable_names(self) -> List[str]:
         return [
@@ -59,6 +61,7 @@ class AeroEvaluator(EvaluationFunction):
             rider_dims = rider_dims.expand(designs.shape[0], -1)
         combinations = torch.cat((int_pts, rider_dims), dim=1)
         combinations = combinations.to(self.device, dtype=self.dtype)
+        combinations = self.preprocessor(combinations)
         predictions = self.model(combinations)
         return predictions
 
@@ -66,8 +69,8 @@ class AeroEvaluator(EvaluationFunction):
 class AestheticsEvaluator(EvaluationFunction):
     def __init__(self, mode="Image", device="cpu", dtype=torch.float32):
         super().__init__(device, dtype)
-        model_path = resource_utils.resource_path("models") + '/clip.pt'
-        self.scaler = embedding_predictor._get_pickled_scaler()
+        model_path = models_and_scalers_path("clip_model.pt")
+        self.preprocessor = clip_predictor.ClipPreprocessor(device)
         self.model = torch.load(model_path).to(self.device)
         self.mode = mode  # Image, Text, or Image Path
         self.embedding_model = clip_embedding_calculator.ClipEmbeddingCalculatorImpl()
@@ -134,8 +137,7 @@ class AestheticsEvaluator(EvaluationFunction):
                     em = self.embedding_model.from_text([item])
                 embeds.append(em.squeeze(0))
             embed = torch.stack(embeds, dim=0)
-
-        designs = self.scaler(designs)
+        designs = self.preprocessor(designs)
         preds = self.model(designs)
         N = preds.size(0)
 

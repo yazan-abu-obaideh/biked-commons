@@ -3,24 +3,29 @@ import torch.nn as nn
 import dill
 
 from biked_commons.resource_utils import models_and_scalers_path
+from biked_commons.prediction.prediction_utils import TorchStandardScaler
 
 
-def remove_wall_thickness(x):
+def remove_wall_thickness(x, device):
     # indices_to_drop = [26, 27, 28, 29, 30, 31, 32]
     first_chunk = x[:, :26]
     second_chunk = x[:, 33:]
     x = torch.cat((first_chunk, second_chunk), dim=1)
     return x
 
-def preprocess_clip(x):
-    x = remove_wall_thickness(x)
-    scaler_path = models_and_scalers_path("clip_scaler.pk")
-    with open(scaler_path, "rb") as file:
-        scaler = dill.load(file)
-    x = scaler.transform(x)
-    x = torch.tensor(x, dtype=torch.float32)
-    
-    return x
+class ClipPreprocessor(nn.Module):
+    def __init__(self, device: torch.device = None):
+        super().__init__()
+        scaler_path = models_and_scalers_path("clip_scaler.pt")
+        self.device = device or torch.device('cpu')
+        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device)
+        self.scaler.to(self.device)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = remove_wall_thickness(x, self.device)
+        return self.scaler(x)
+
+    __call__ = forward
     
 class ResidualBlock(nn.Module):
     def __init__(self, input_size, layer_size, num_layers):

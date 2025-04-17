@@ -5,15 +5,15 @@ import pandas as pd
 import torch
 from sklearn import preprocessing
 
-from biked_commons.resource_utils import resource_path
+from biked_commons.resource_utils import resource_path, models_and_scalers_path
 from biked_commons.usability.mlp_model import MLP
 from biked_commons.usability.usability_ordered_columns import ORDERED_COLUMNS
 
 
-_SVM_MODEL_PATH = resource_path("models/svm_model.pkl")
-_MLP_MODEL_PATH = resource_path("models/mlp_with_hyperparameters.pth")
+_SVM_MODEL_PATH = models_and_scalers_path("svm_model.pkl")
+_MLP_MODEL_PATH = models_and_scalers_path("mlp_with_hyperparameters.pth")
 _DATA_PATH = resource_path("datasets/raw_datasets/clip_sBIKED_processed.csv")
-_SCALER_PATH = resource_path("scaler_usability.pk")
+_SCALER_PATH = models_and_scalers_path("scaler_usability.pk")
 
 
 def _load_scaler() -> preprocessing.MinMaxScaler:
