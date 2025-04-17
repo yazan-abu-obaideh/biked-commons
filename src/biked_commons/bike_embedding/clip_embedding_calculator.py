@@ -1,10 +1,13 @@
 import abc
 
 import numpy as np
+import torch
 from PIL import Image
 from transformers import CLIPProcessor, CLIPTokenizerFast, CLIPModel
 from torchvision import transforms
 
+
+#TODO investigate memory footprint of loading these here. Perhaps avoid?
 _DEVICE = "cuda"
 _MODEL_ID = "openai/clip-vit-base-patch32"
 _CLIP_PROCESSOR = CLIPProcessor.from_pretrained(_MODEL_ID)
@@ -37,6 +40,14 @@ class ClipEmbeddingCalculatorImpl(ClipEmbeddingCalculator):
         img_processed = _CLIP_PROCESSOR(text=None, images=image, return_tensors='pt')['pixel_values']  # .to(device)
         embedding_tensor = _MODEL.get_image_features(img_processed)
         return self._to_numpy_array(embedding_tensor)
+    
+    def from_image_tensor(self, image_tensor: torch.Tensor) -> np.ndarray:
+        img = image_tensor.cpu().clone()
+        img = transforms.Resize((1300, 1300))(img)
+        result = Image.new(img.mode, (1300, 1300), (255, 255, 255))
+        result.paste(img, img.getbbox())
+        image = np.asarray(result)
+        img_processed = _CLIP_PROCESSOR(text=None, images=image, return_tensors='pt')['pixel_values']
 
     def _to_numpy_array(self, embedding_tensor):
         return embedding_tensor.detach().numpy().reshape((512,))

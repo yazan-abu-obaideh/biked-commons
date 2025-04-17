@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 import math
+import dill
+
+from biked_commons.resource_utils import models_and_scalers_path
+from biked_commons.prediction.prediction_utils import TorchStandardScaler
 
 def calculate_features(X):
     def law_of_cos(a, b, c):
@@ -93,25 +97,24 @@ def calculate_features(X):
 
     return features.T
 
+class AeroPreprocessor(nn.Module):
+    def __init__(self, scaler_state_path: str, device: torch.device = None):
+        super().__init__()
+        self.device = device or torch.device('cpu')
+        self.scaler_state_path = scaler_state_path
+        self.scaler = None
 
-class DNN(nn.Module):
-    def __init__(self, input_dim, output_dim, mean, std):
-        super(DNN, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, output_dim)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)
-        self.mean = mean
-        self.std = std
+    def _init_scaler(self):
+        if self.scaler is None:
+            self.scaler = TorchStandardScaler().to(self.device)
+            state_dict = torch.load(self.scaler_state_path, map_location=self.device)
+            self.scaler.load_state_dict(state_dict)
+            self.scaler.fitted = True
 
-    def forward(self, x):
-        features = calculate_features(x) #feature engineering
-        x = torch.cat((x, features), dim=1)
-        x = (x - self.mean) / self.std #normalize features
-        x = self.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = self.fc3(x)
-        return x
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        self._init_scaler()
+        x = x.to(self.device)
+        feats = calculate_features(x)
+        return self.scaler(feats)
+
+    __call__ = forward

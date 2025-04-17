@@ -1,32 +1,36 @@
 import pandas as pd
 import numpy as np
-from sklearn.metrics import f1_score, r2_score, mean_squared_error, accuracy_score
+import torch
+from sklearn.metrics import f1_score, r2_score, mean_squared_error
 
-from biked_commons.resource_utils import resource_path
-
-def evaluate_usability(predictions, target_type):
-    if target_type == 'cont':
-        Y_test = pd.read_csv(resource_path('datasets/split_datasets/usability_cont_Y_test.csv'), index_col=0)
-        return r2_score(Y_test, predictions)
-    
-    elif target_type == 'binary':
-        Y_test = pd.read_csv(resource_path('datasets/split_datasets/usability_binary_Y_test.csv'), index_col=0)
-        return accuracy_score(Y_test, predictions)
-    else:
-        raise ValueError("Invalid target_type. Choose either 'cont' or 'binary'.")
-
-def evaluate_frame_validity(predictions):
-    Y_test = pd.read_csv(resource_path('datasets/split_datasets/validity_Y_test.csv'), index_col=0)
+def evaluate_frame_validity(model, preprocessing_fn, device="cpu"):
+    X_test = pd.read_csv('../../resources/datasets/split_datasets/validity_X_test.csv', index_col=0)    
+    Y_test = pd.read_csv('../../resources/datasets/split_datasets/validity_Y_test.csv', index_col=0)
+    X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    X_test_tensor = preprocessing_fn(X_test_tensor)
+    predictions = model(X_test_tensor).detach().cpu().numpy()
     return f1_score(Y_test, predictions)
 
-def evaluate_structure(predictions):
-    Y_test = pd.read_csv(resource_path('datasets/split_datasets/structure_Y_test.csv'), index_col=0)
+def evaluate_structure(model, preprocessing_fn, device="cpu"):
+    Y_test = pd.read_csv('../../resources/datasets/split_datasets/structure_Y_test.csv', index_col=0)
+    X_test = pd.read_csv('../../resources/datasets/split_datasets/structure_X_test.csv', index_col=0)
+    X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    X_test_tensor = preprocessing_fn(X_test_tensor)
+    predictions = model(X_test_tensor).detach().cpu().numpy()
     return r2_score(Y_test, predictions)
 
-def evaluate_aero(predictions):
-    Y_test = pd.read_csv(resource_path('datasets/split_datasets/aero_Y_test.csv'), index_col=0)
+def evaluate_aero(model, preprocessing_fn, device="cpu"):
+    Y_test = pd.read_csv('../../resources/datasets/split_datasets/aero_Y_test.csv', index_col=0)
+    X_test = pd.read_csv('../../resources/datasets/split_datasets/aero_X_test.csv', index_col=0)
+    X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    X_test_tensor = preprocessing_fn(X_test_tensor)
+    predictions = model(X_test_tensor).detach().cpu().numpy()
     return r2_score(Y_test, predictions)
 
-def evaluate_clip(predictions):
-    Y_test = np.load(resource_path('datasets/raw_datasets/CLIP_Y_test.npy'))
+def evaluate_clip(model, preprocessing_fn, device="cpu"):
+    Y_test = pd.read_csv("../../resources/datasets/split_datasets/CLIP_Y_test.npy", index_col=0)
+    X_test = np.load("../../resources/datasets/split_datasets/CLIP_X_test.npy")
+    X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    X_test_tensor = preprocessing_fn(X_test_tensor)
+    predictions = model(X_test_tensor).detach().cpu().numpy()
     return mean_squared_error(Y_test, predictions)

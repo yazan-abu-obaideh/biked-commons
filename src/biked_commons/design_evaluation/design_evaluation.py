@@ -3,9 +3,11 @@ from typing import List
 import numpy as np
 import pandas as pd
 import torch
+import torch.nn.functional as F
+import dill
 
 from biked_commons import resource_utils
-from biked_commons.bike_embedding import ordered_columns
+from biked_commons.bike_embedding import ordered_columns, clip_embedding_calculator, embedding_predictor
 from biked_commons.prediction.usability_predictors import UsabilityPredictorBinary, UsabilityPredictorContinuous
 from biked_commons.usability import usability_ordered_columns
 from biked_commons.transformation import interface_points
@@ -64,9 +66,11 @@ class AeroEvaluator(EvaluationFunction):
 class AestheticsEvaluator(EvaluationFunction):
     def __init__(self, mode="Image", device="cpu", dtype=torch.float32):
         super().__init__(device, dtype)
-        model_path = resource_utils.resource_path("models") + '/clip.pth'
+        model_path = resource_utils.resource_path("models") + '/clip.pt'
+        self.scaler = embedding_predictor._get_pickled_scaler()
         self.model = torch.load(model_path).to(self.device)
         self.mode = mode  # Image, Text, or Image Path
+        self.embedding_model = clip_embedding_calculator.ClipEmbeddingCalculatorImpl()
 
     def variable_names(self) -> List[str]:
         return ordered_columns.ORDERED_COLUMNS
@@ -78,15 +82,76 @@ class AestheticsEvaluator(EvaluationFunction):
             return ['Cosine Similarity to Text']
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
-        condition = conditioning[self.mode]
+        cond = conditioning.get(self.mode)
+        if cond is None:
+            raise ValueError(f"No conditioning provided for mode '{self.mode}'")
+
+        def is_singleton_list(x):
+            return isinstance(x, (list, tuple)) and len(x) == 1
+
         if self.mode == "Image":
-            ...
+            if isinstance(cond, torch.Tensor):
+                cond_list = [cond]
+            elif isinstance(cond, list):
+                cond_list = cond
+            else:
+                raise TypeError("For Image mode, conditioning must be a Tensor or list of Tensors")
         elif self.mode == "Image Path":
-            ...
+            if isinstance(cond, str):
+                cond_list = [cond]
+            elif isinstance(cond, (list, tuple)):
+                cond_list = list(cond)
+            else:
+                raise TypeError("For Image Path mode, conditioning must be a path or list of paths")
         elif self.mode == "Text":
-            ...
-        predictions = self.model(designs)
-        return predictions
+            if isinstance(cond, str):
+                cond_list = [cond]
+            elif isinstance(cond, (list, tuple)):
+                cond_list = list(cond)
+            else:
+                raise TypeError("For Text mode, conditioning must be text or list of texts")
+        else:
+            raise ValueError(f"Unsupported mode: {self.mode}")
+
+        if is_singleton_list(cond_list):
+            single = cond_list[0]
+            if self.mode == "Image":
+                img = single.unsqueeze(0) if single.dim() == 3 else single
+                embed = self.embedding_model.from_image_tensor(img)
+            elif self.mode == "Image Path":
+                embed = self.embedding_model.from_image_path([single])
+            else:
+                embed = self.embedding_model.from_text([single])
+        else:
+            embeds = []
+            for item in cond_list:
+                if self.mode == "Image":
+                    img = item.unsqueeze(0) if item.dim() == 3 else item
+                    em = self.embedding_model.from_image_tensor(img)
+                elif self.mode == "Image Path":
+                    em = self.embedding_model.from_image_path([item])
+                else:
+                    em = self.embedding_model.from_text([item])
+                embeds.append(em.squeeze(0))
+            embed = torch.stack(embeds, dim=0)
+
+        designs = self.scaler(designs)
+        preds = self.model(designs)
+        N = preds.size(0)
+
+        if embed.dim() == 1:
+            embed = embed.unsqueeze(0)
+
+        B_cond = embed.size(0)
+        if B_cond == 1 and N > 1:
+            embed = embed.expand(N, -1)
+        elif B_cond != N:
+            raise ValueError(f"Number of condition embeddings ({B_cond}) does not match number of designs ({N})")
+
+        cos_sim = F.cosine_similarity(preds, embed, dim=1)
+        return (1 - cos_sim) / 2
+
+
 
 class ErgonomicsEvaluator(EvaluationFunction):
     def __init__(self, device="cpu", dtype=torch.float32):
