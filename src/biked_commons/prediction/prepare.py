@@ -14,7 +14,7 @@ def prepare_validity():
     subset = df[df['valid'].isin([0, 2])]
     Y = subset['valid']
     X = subset.drop('valid', axis=1)
-
+    Y = Y.replace({0: 0, 2: 1})  # Convert to binary classification (0 and 1)
     X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2, random_state=0, stratify=Y)
 
     X_train.to_csv(resource_path('datasets/split_datasets/validity_X_train.csv'))
@@ -25,6 +25,7 @@ def prepare_validity():
 def prepare_structure():
     df = pd.read_csv(resource_path('datasets/raw_datasets/structure.csv'), index_col=0)
     df = df.reset_index(drop=True)
+    df = df.drop(columns=["batch"])
 
     sim_1_displacements = df[["Sim 1 Dropout X Disp.", "Sim 1 Dropout Y Disp.", "Sim 1 Bottom Bracket X Disp.", "Sim 1 Bottom Bracket Y Disp."]].values
     sim_1_abs_displacements = np.abs(sim_1_displacements)

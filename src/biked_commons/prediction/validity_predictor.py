@@ -1,24 +1,20 @@
 import torch
 import torch.nn as nn
 import math
+import pandas as pd
 
+from biked_commons.resource_utils import models_and_scalers_path
+from biked_commons.prediction.prediction_utils import TorchStandardScaler
 
-class DNN(nn.Module):
-    def __init__(self, input_dim, output_dim, mean, std):
-        super(DNN, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, output_dim)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)
-        self.mean = mean
-        self.std = std
+class ValidityPreprocessor(nn.Module):
+    def __init__(self, device: torch.device = None):
+        super().__init__()
+        scaler_path = models_and_scalers_path("validity_scaler.pt")
+        self.device = device or torch.device('cpu')
+        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device)
+        self.scaler.to(self.device)
 
-    def forward(self, x):
-        x = (x - self.mean) / self.std #normalize features
-        x = self.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = self.fc3(x)
-        return x
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.scaler(x)
+
+    __call__ = forward

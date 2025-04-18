@@ -19,13 +19,33 @@ def load_usability(target_type: str):
 
 def load_validity():
     X_train = pd.read_csv(resource_path('datasets/split_datasets/validity_X_train.csv'), index_col=0)
+    X_train = one_hot_encode_material(X_train)
     Y_train = pd.read_csv(resource_path('datasets/split_datasets/validity_Y_train.csv'), index_col=0)
     return X_train, Y_train
+
 def load_structure(one_hot: bool = False):
     X_train = pd.read_csv(resource_path('datasets/split_datasets/structure_X_train.csv'), index_col=0)
+    X_train = one_hot_encode_material(X_train)
     Y_train = pd.read_csv(resource_path('datasets/split_datasets/structure_Y_train.csv'), index_col=0)
 
     return X_train, Y_train
+
+def one_hot_encode_material(data: pd.DataFrame):
+    data = data.copy()
+    data["Material"] = pd.Categorical(data["Material"], categories=["Steel", "Aluminum", "Titanium"])
+    mats_oh = pd.get_dummies(data["Material"], prefix="Material=", prefix_sep="")
+    data.drop(["Material"], axis=1, inplace=True)
+    data = pd.concat([mats_oh, data], axis=1)
+    return data
+
+def one_hot_encode_material(data: pd.DataFrame):
+    data = data.copy()
+    # One-hot encode the materials
+    data["Material"] = pd.Categorical(data["Material"], categories=["Steel", "Aluminum", "Titanium"])
+    mats_oh = pd.get_dummies(data["Material"], prefix="Material=", prefix_sep="")
+    data.drop(["Material"], axis=1, inplace=True)
+    data = pd.concat([mats_oh, data], axis=1)
+    return data
 
 def load_aero():
     X_train = pd.read_csv(resource_path('datasets/split_datasets/aero_X_train.csv'), index_col=0)
