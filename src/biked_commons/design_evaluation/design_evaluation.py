@@ -11,7 +11,7 @@ from biked_commons.prediction.usability_predictors import UsabilityPredictorBina
 from biked_commons.usability import usability_ordered_columns
 from biked_commons.transformation import interface_points
 from biked_commons.ergonomics import joint_angles
-from biked_commons.prediction import aero_predictor, clip_predictor
+from biked_commons.prediction import aero_predictor, clip_predictor, validity_predictor
 from biked_commons.resource_utils import models_and_scalers_path, split_datasets_path
 from biked_commons.validation.base_validation_function import construct_tensor_validator
 from biked_commons.validation.clip_validation_functions import CLIPS_VALIDATIONS
@@ -67,6 +67,27 @@ class AeroEvaluator(EvaluationFunction):
         predictions = self.model(combinations)
         return predictions
 
+class FrameValidityEvaluator(EvaluationFunction):
+    def __init__(self, device="cpu", dtype=torch.float32):
+        super().__init__(device, dtype)
+        model_path = models_and_scalers_path("validity_model.pt")
+        self.model = torch.load(model_path).to(self.device)
+        self.preprocessor = aero_predictor.ValidityPreprocessor(device)
+
+    def variable_names(self) -> List[str]:
+        return ...
+
+    def return_names(self) -> List[str]:
+        return ['Predicted Frame Validity']
+
+    def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
+
+        framed_tensor = ... #TODO
+        framed_tensor = framed_tensor.to(self.device, dtype=self.dtype)
+        combinations = self.preprocessor(combinations)
+        predictions = self.model(combinations)
+        validity = predictions-0.5
+        return predictions
 
 class AestheticsEvaluator(EvaluationFunction):
     def __init__(self, mode="Image", device="cpu", dtype=torch.float32):

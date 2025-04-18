@@ -39,13 +39,14 @@ class TorchStandardScaler(nn.Module):
 
 
 class DNN(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, output_dim=1, classification=False):
         super(DNN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 256)
         self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 1)
+        self.fc3 = nn.Linear(128, output_dim)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.2)
+        self.classification = classification
 
     def forward(self, x):
         x = self.relu(self.fc1(x))
@@ -53,4 +54,6 @@ class DNN(nn.Module):
         x = self.relu(self.fc2(x))
         x = self.dropout(x)
         x = self.fc3(x)
+        if self.classification:
+            x = torch.sigmoid(x)
         return x
