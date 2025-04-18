@@ -22,19 +22,22 @@ OPTIMIZED_TO_CAD = {
 
 
 class BikeCadFileBuilder:
-    def build_cad_from_biked(self, bike_object: dict, seed_bike_xml: str) -> str:
+    def build_cad_from_biked(self, biked: dict, seed_bike_xml: str, show_rider = False) -> str:
         xml_handler = BikeXmlHandler()
         xml_handler.set_xml(seed_bike_xml)
         for response_key, cad_key in OPTIMIZED_TO_CAD.items():
-            self._update_xml(xml_handler, cad_key, bike_object[response_key])
-        # self._update_xml(xml_handler, "Display RIDER", "true")
+            self._update_xml(xml_handler, cad_key, biked[response_key])
+        if show_rider:
+            xml_handler.add_or_update("Display RIDER", "true")
         return xml_handler.get_content_string()
 
-    def build_cad_from_clips_object(self, target_bike: dict, seed_bike_xml: str) -> str:
+    def build_cad_from_clip(self, clip: dict, seed_bike_xml: str, show_rider = False) -> str:
         xml_handler = BikeXmlHandler()
         xml_handler.set_xml(seed_bike_xml)
-        target_dict = self._to_cad_dict(target_bike)
+        target_dict = self._to_cad_dict(clip)
         self._update_values(xml_handler, target_dict)
+        if show_rider:
+            xml_handler.add_or_update("Display RIDER", "true")
         return xml_handler.get_content_string()
 
     def _to_cad_dict(self, bike: dict):

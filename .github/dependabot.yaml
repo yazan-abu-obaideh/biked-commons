@@ -1,0 +1,16 @@
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/BikeCAD-server"
+    schedule:
+      interval: "monthly"
+      time: "11:30"
+      timezone: "Etc/Universal"
+    target-branch: master
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+      time: "11:30"
+      timezone: "Etc/Universal"
+    target-branch: master
