@@ -12,7 +12,9 @@ from biked_commons.usability import usability_ordered_columns
 from biked_commons.transformation import interface_points
 from biked_commons.ergonomics import joint_angles
 from biked_commons.prediction import aero_predictor, clip_predictor
-from biked_commons.resource_utils import models_and_scalers_path
+from biked_commons.resource_utils import models_and_scalers_path, split_datasets_path
+from biked_commons.validation.base_validation_function import construct_tensor_validator
+from biked_commons.validation.clip_validation_functions import CLIPS_VALIDATIONS
 
 
 
@@ -153,7 +155,24 @@ class AestheticsEvaluator(EvaluationFunction):
         cos_sim = F.cosine_similarity(preds, embed, dim=1)
         return (1 - cos_sim) / 2
 
+class ValidationEvaluator(EvaluationFunction):
+    def __init__(self, device="cpu", dtype=torch.float32):
+        super().__init__(device, dtype)
+        self.clip_parameters = pd.read_csv(split_datasets_path("CLIP_X_test.csv"), index_col=0).columns.tolist() #TODO maybe include a list somewhere to avoid loading a dataset?
+        validator, validation_names = construct_tensor_validator(CLIPS_VALIDATIONS, self.clip_parameters)
+        self.validator = validator
+        self.validation_names = validation_names
 
+    def variable_names(self) -> List[str]:
+        return self.clip_parameters
+
+    def return_names(self) -> List[str]:
+        return self.validation_names
+
+    def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
+        # designs = designs.to(self.device, dtype=self.dtype)
+        predictions = self.validator(designs)
+        return predictions
 
 class ErgonomicsEvaluator(EvaluationFunction):
     def __init__(self, device="cpu", dtype=torch.float32):

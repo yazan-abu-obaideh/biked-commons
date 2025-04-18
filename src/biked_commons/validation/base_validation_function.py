@@ -45,6 +45,8 @@ def construct_tensor_validator(validation_functions: List[ValidationFunction], c
 
     column_names = list(column_names)
 
+    all_return_names = [v.friendly_name() for v in validation_functions]
+
     def validate_tensor(designs: torch.Tensor) -> torch.Tensor:
         """
         Applies the validation functions to the given tensor and returns a tensor of results.
@@ -87,7 +89,7 @@ def construct_tensor_validator(validation_functions: List[ValidationFunction], c
 
         return results_tensor
 
-    return validate_tensor
+    return validate_tensor, all_return_names
 
 
 def construct_dataframe_validator(validation_functions: List[ValidationFunction]):
