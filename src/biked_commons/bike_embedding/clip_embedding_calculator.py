@@ -1,11 +1,11 @@
 import abc
+import time
 
 import numpy as np
 import torch
 from PIL import Image
-from transformers import CLIPProcessor, CLIPTokenizerFast, CLIPModel
 from torchvision import transforms
-
+from transformers import CLIPProcessor, CLIPTokenizerFast, CLIPModel
 
 #TODO investigate memory footprint of loading these here. Perhaps avoid?
 _DEVICE = "cuda"
@@ -31,7 +31,12 @@ class ClipEmbeddingCalculatorImpl(ClipEmbeddingCalculator):
         return embedding_tensor
 
     def from_image_path(self, image_path: str) -> np.ndarray:
-        img = Image.open(image_path).convert("RGB")
+        return self.from_image(Image.open(image_path))
+
+    def from_image(self, img: Image.Image):
+        start = time.time()
+
+        img = img.convert("RGB")
         width, height = img.size
         img = img.resize((width // 2, height // 2))
         result = Image.new(img.mode, (1300, 1300), (255, 255, 255))
@@ -39,8 +44,10 @@ class ClipEmbeddingCalculatorImpl(ClipEmbeddingCalculator):
         image = np.asarray(result)
         img_processed = _CLIP_PROCESSOR(text=None, images=image, return_tensors='pt')['pixel_values']  # .to(device)
         embedding_tensor = _MODEL.get_image_features(img_processed)
+
+        print(f"Obtaining embeddings took {time.time() - start}")
         return embedding_tensor
-    
+
     def from_image_tensor(self, image_tensor: torch.Tensor) -> np.ndarray:
         img = image_tensor.cpu().clone()
         img = transforms.Resize((1300, 1300))(img)
