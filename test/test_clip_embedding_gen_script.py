@@ -21,7 +21,7 @@ def to_tensor(image):
 
 def generate_embeddings(number_rendering_servers: int):
     clip_data = pd.read_csv(resource_path("datasets/split_datasets/CLIP_X_test.csv"), index_col=0)
-    records = clip_data.sample(12).to_dict(orient="records")
+    records = clip_data.to_dict(orient="records")
     executor = ThreadPoolExecutor(max_workers=number_rendering_servers * 2)
     rendering_engine = RenderingEngine(number_rendering_servers=number_rendering_servers,
                                        server_init_timeout_seconds=90)
