@@ -1,6 +1,7 @@
 import torch
 import dill
 from torch import nn
+from biked_commons.resource_utils import models_and_scalers_path
 
 
 class TorchStandardScaler(nn.Module):
@@ -36,7 +37,20 @@ class TorchStandardScaler(nn.Module):
     # alias
     transform = forward
 
+class Preprocessor(nn.Module):
+    def __init__(self, scaler_path, preprocess_fn, device: torch.device = None):
+        super().__init__()
+        self.device = device or torch.device('cpu')
+        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device)
+        self.scaler.to(self.device)
+        self.preprocess_fn = preprocess_fn
 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.preprocess_fn:
+            x = self.preprocess_fn(x, self.device)
+        return self.scaler(x)
+
+    __call__ = forward
 
 class DNN(nn.Module):
     def __init__(self, input_dim, output_dim=1, classification=False):
@@ -57,3 +71,4 @@ class DNN(nn.Module):
         if self.classification:
             x = torch.sigmoid(x)
         return x
+    

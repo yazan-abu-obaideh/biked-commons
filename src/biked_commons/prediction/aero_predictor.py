@@ -98,17 +98,3 @@ def calculate_features(X, device="cpu"):
     X = torch.cat((X, features.T), dim=1)
     return X
 
-class AeroPreprocessor(nn.Module):
-    def __init__(self, device: torch.device = None):
-        super().__init__()
-        scaler_path = models_and_scalers_path("aero_scaler.pt")
-        self.device = device or torch.device('cpu')
-        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device)
-        self.scaler.to(self.device)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = calculate_features(x, self.device)
-        return self.scaler(x)
-
-    __call__ = forward
-
