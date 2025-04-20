@@ -34,6 +34,10 @@ class EvaluationFunction(ABC):
     def return_names(self) -> List[str]:
         pass
 
+    @abstractmethod # 1 = objective, 0 = constraint
+    def return_types(self) -> List[str]:
+        pass
+
     @abstractmethod
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         pass
@@ -57,6 +61,9 @@ class AeroEvaluator(EvaluationFunction):
 
     def return_names(self) -> List[str]:
         return ['Drag Force']
+    
+    def return_types(self) -> List[str]:
+        return [1]
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         int_pts = interface_points.calculate_interface_points(designs)
@@ -85,6 +92,9 @@ class FrameValidityEvaluator(EvaluationFunction):
 
     def return_names(self) -> List[str]:
         return ['Predicted Frame Validity']
+    
+    def return_types(self) -> List[str]:
+        return [0]
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
 
@@ -111,11 +121,15 @@ class StructuralEvaluator(EvaluationFunction):
     def return_names(self) -> List[str]:
         return ['Mass', 'Planar Compliance', 'Transverse Compliance', 'Eccentric Compliance', 'Planar Safety Factor', 'Eccentric Safety Factor']
 
+    def return_types(self) -> List[str]:
+        return [1,1,1,1,0,0]
+
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         framed_tensor = self.converter(designs)
         framed_tensor = framed_tensor.to(self.device, dtype=self.dtype)
         framed_tensor = self.preprocessor(framed_tensor)
         predictions = self.model(framed_tensor)
+        predictions[:, 4:6] = 1.5 - predictions[:, 4:6]
         return predictions
 
 class AestheticsEvaluator(EvaluationFunction):
@@ -136,6 +150,9 @@ class AestheticsEvaluator(EvaluationFunction):
             return ['Cosine Similarity to Image']
         elif self.mode == "Text":
             return ['Cosine Similarity to Text']
+        
+    def return_types(self) -> List[str]:
+        return [1]
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         cond = conditioning.get(self.mode)
@@ -219,6 +236,9 @@ class ValidationEvaluator(EvaluationFunction):
 
     def return_names(self) -> List[str]:
         return self.validation_names
+    
+    def return_types(self) -> List[str]:
+        return [0] * len(self.validation_names)
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         # designs = designs.to(self.device, dtype=self.dtype)
@@ -238,6 +258,9 @@ class ErgonomicsEvaluator(EvaluationFunction):
 
     def return_names(self) -> List[str]:
         return ['Knee Angle Error', 'Hip Angle Error', "Arm Angle Error"]
+    
+    def return_types(self) -> List[str]:
+        return [1, 1, 1]
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         assert "Rider" in conditioning, "Rider dimensions must be provided in conditioning to calculate ergonomics."
@@ -285,6 +308,12 @@ class UsabilityEvaluator(EvaluationFunction):
             return ['Usability Score - 0 to 1']
         elif self.target_type == 'binary':
             return ['Usability Class - 0 or 1']
+        
+    def return_types(self) -> List[str]:
+        if self.target_type == 'cont':
+            return [1]
+        elif self.target_type == 'binary':
+            return [0]
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         if self.target_type == 'cont':
@@ -292,6 +321,7 @@ class UsabilityEvaluator(EvaluationFunction):
         elif self.target_type == 'binary':
             x_input = designs.detach().cpu().numpy()
             predictions = self.model.predict(x_input)
+            predictions = predictions - 0.5 #TODO confirm that 0=valid
             return torch.tensor(predictions, dtype=self.dtype, device=self.device)
 
     
@@ -301,8 +331,10 @@ def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], c
 
     # Flatten all return names across evaluators
     all_return_names = []
+    all_return_types = []
     for vf in evaluation_functions:
         all_return_names.extend(vf.return_names())
+        all_return_types.extend(vf.return_types())
 
     def evaluate_tensor(designs: torch.Tensor, conditioning={}) -> torch.Tensor:
         n = designs.shape[0]
@@ -325,13 +357,13 @@ def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], c
 
         return results_tensor
 
-    return evaluate_tensor, all_return_names
+    return evaluate_tensor, all_return_names, all_return_types
 
 def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]):
 
     def evaluate_dataframe(designs: pd.DataFrame, conditioning={}) -> pd.DataFrame:
         designs_tensor = torch.tensor(designs.values, dtype=torch.float32)
-        tensor_evaluator, return_names = construct_tensor_evaluator(evaluation_functions, list(designs.columns))
+        tensor_evaluator, return_names, return_types = construct_tensor_evaluator(evaluation_functions, list(designs.columns))
         results_tensor = tensor_evaluator(designs_tensor, conditioning)
 
         results_df = pd.DataFrame(
@@ -340,7 +372,7 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
             index=designs.index
         )
 
-        return results_df
+        return results_df, return_types
 
     return evaluate_dataframe
 
