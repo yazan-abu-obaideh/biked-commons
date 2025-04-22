@@ -40,7 +40,8 @@ class ServerManager(metaclass=ABCMeta):
         if not self._check_server_health(port):
             print(f"Starting BikeCAD server on port {port}...")
             process = subprocess.Popen(
-                [JAVA_BINARY, "-jar", resource_path("BikeCAD-server.jar"), f"--server.port={port}"])
+                [JAVA_BINARY, "-Djava.awt.headless=false", "-jar", resource_path("BikeCAD-server.jar"),
+                 f"--server.port={port}"])
             self._server_pids.append(process.pid)
             self._await_start_or_throw(port, timeout_seconds)
             print(f"BikeCAD server started on port {port}.")
