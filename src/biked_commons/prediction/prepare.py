@@ -511,3 +511,19 @@ def generate_descriptions(df):
         description = generate_description(df_slice, colors)
         descriptions.append(description)
     return descriptions
+
+def prepare_text_descriptions():
+
+    data = pd.read_csv(split_datasets_path("CLIP_X_test.csv"), index_col=0)
+    descriptions = prepare.generate_descriptions(data)
+    with open(split_datasets_path("text_descriptions_test.txt"), "w") as f:
+        for desc in tqdm(descriptions):
+            f.write(desc + "\n")
+
+    data = pd.read_csv(split_datasets_path("CLIP_X_train.csv"), index_col=0)
+    #sample 100k
+    data = data.sample(100000)
+    descriptions = prepare.generate_descriptions(data)
+    with open(split_datasets_path("text_descriptions_train.txt"), "w") as f:
+        for desc in tqdm(descriptions):
+            f.write(desc + "\n")
