@@ -270,22 +270,39 @@ class ErgonomicsEvaluator(EvaluationFunction):
 
         assert "Use Case" in conditioning, "Use Case must be provided in conditioning to calculate ergonomics."
         use_case = conditioning["Use Case"]
-        
-        allowed_use_cases = {"road", "mtb", "commute"}
-        if isinstance(use_case, str):
-            if use_case not in allowed_use_cases:
-                raise ValueError("Invalid use case. Choose either 'road', 'mtb', or 'commute'.")
-            use_case = [use_case] * designs.shape[0]
-        elif isinstance(use_case, (list, np.ndarray)):
-            if len(use_case) != designs.shape[0]:
-                raise ValueError("Length of use case list must match number of designs.")
-            if not all(u in allowed_use_cases for u in use_case):
-                raise ValueError("Invalid use case in list. All entries must be 'road', 'mtb', or 'commute'.")
+        if use_case.ndim == 1:
+            if use_case.shape != (3,):
+                raise ValueError("If 1D, Use Case array must have shape (3,), got {}".format(use_case.shape))
+            if not np.array_equal(use_case, use_case.astype(bool)):
+                raise ValueError("Use Case 1D array must contain only 0s and 1s")
+            if use_case.sum() != 1:
+                raise ValueError("Use Case 1D array must be a valid one-hot vector (sum == 1)")
+            # Broadcast to (n,3)
+            use_case = np.tile(use_case, (designs.shape[0], 1))
+
+        elif use_case.ndim == 2:
+            n, k = use_case.shape
+            if k != 3:
+                raise ValueError("If 2D, Use Case array must have shape (n,3), got {}".format(use_case.shape))
+            if n != designs.shape[0]:
+                raise ValueError("Number of rows in Use Case (got {}) must match number of designs ({})"
+                                .format(n, designs.shape[0]))
+            # Check binary values and one-hot per row
+            if not np.array_equal(use_case, use_case.astype(bool)):
+                raise ValueError("Use Case 2D array must contain only 0s and 1s")
+            row_sums = use_case.sum(axis=1)
+            if not np.all(row_sums == 1):
+                bad = np.where(row_sums != 1)[0]
+                raise ValueError(f"Rows at indices {bad.tolist()} are not valid one-hot vectors")
+
         else:
-            raise TypeError("Use Case must be a string or a list/array of strings.")
+            raise ValueError("Use Case array must be 1D or 2D, got {}-D".format(use_case.ndim))
+        
+        index_to_label = ["road", "mtb", "commute"]
+        use_case_list = [index_to_label[idx] for idx in use_case.argmax(axis=1)]
 
         int_pts = interface_points.calculate_interface_points(designs)
-        predictions = joint_angles.adjusted_nll(int_pts, rider_dims, use_case)
+        predictions = joint_angles.adjusted_nll(int_pts, rider_dims, use_case_list)
         return predictions
 
 
