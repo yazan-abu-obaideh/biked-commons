@@ -5,6 +5,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 import dill
+from PIL import Image
 
 from biked_commons.bike_embedding import ordered_columns, clip_embedding_calculator
 from biked_commons.prediction.usability_predictors import UsabilityPredictorBinary, UsabilityPredictorContinuous
@@ -133,92 +134,91 @@ class StructuralEvaluator(EvaluationFunction):
         return predictions
 
 class AestheticsEvaluator(EvaluationFunction):
-    def __init__(self, mode="Image", device="cpu", dtype=torch.float32):
+    def __init__(self,
+                 mode: str = "Image",
+                 device: str = "cpu",
+                 dtype: torch.dtype = torch.float32,
+                 batch_size: int = None):
         super().__init__(device, dtype)
-        model_path = models_and_scalers_path("clip_model.pt")
+        model_path  = models_and_scalers_path("clip_model.pt")
         scaler_path = models_and_scalers_path("clip_scaler.pt")
-        self.preprocessor = Preprocessor(scaler_path=scaler_path, preprocess_fn=clip_predictor.remove_wall_thickness, device=device)
+        self.preprocessor = Preprocessor(
+            scaler_path=scaler_path,
+            preprocess_fn=clip_predictor.remove_wall_thickness,
+            device=device
+        )
         self.model = torch.load(model_path).to(self.device)
-        self.mode = mode  # Image, Text, or Image Path
-        self.embedding_model = clip_embedding_calculator.ClipEmbeddingCalculatorImpl()
+        self.model.eval()
+
+        self.mode = mode  # "Image", "Image Path", or "Text"
+        self.embedding_model = clip_embedding_calculator.ClipEmbeddingCalculator(
+            device=self.device,
+            batch_size=batch_size
+        )
 
     def variable_names(self) -> List[str]:
         return ordered_columns.ORDERED_COLUMNS
 
     def return_names(self) -> List[str]:
         if self.mode in ["Image", "Image Path"]:
-            return ['Cosine Similarity to Image']
+            return ["Cosine Similarity to Image"]
         elif self.mode == "Text":
-            return ['Cosine Similarity to Text']
-        
+            return ["Cosine Similarity to Text"]
+
     def return_types(self) -> List[str]:
         return [1]
 
-    def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
+    def evaluate(self,
+                 designs: torch.Tensor,
+                 conditioning: dict = {}) -> torch.Tensor:
         cond = conditioning.get(self.mode)
         if cond is None:
             raise ValueError(f"No conditioning provided for mode '{self.mode}'")
 
-        def is_singleton_list(x):
-            return isinstance(x, (list, tuple)) and len(x) == 1
-
+        # Prepare a list of items for embedding
         if self.mode == "Image":
             if isinstance(cond, torch.Tensor):
-                cond_list = [cond]
-            elif isinstance(cond, list):
-                cond_list = cond
+                items = [cond]
+            elif isinstance(cond, (list, tuple)):
+                items = list(cond)
             else:
                 raise TypeError("For Image mode, conditioning must be a Tensor or list of Tensors")
+            embed = self.embedding_model.embed_images(items)
+
         elif self.mode == "Image Path":
             if isinstance(cond, str):
-                cond_list = [cond]
+                paths = [cond]
             elif isinstance(cond, (list, tuple)):
-                cond_list = list(cond)
+                paths = list(cond)
             else:
                 raise TypeError("For Image Path mode, conditioning must be a path or list of paths")
+            imgs = [Image.open(p) for p in paths]
+            embed = self.embedding_model.embed_images(imgs)
+
         elif self.mode == "Text":
             if isinstance(cond, str):
-                cond_list = [cond]
+                texts = [cond]
             elif isinstance(cond, (list, tuple)):
-                cond_list = list(cond)
+                texts = list(cond)
             else:
                 raise TypeError("For Text mode, conditioning must be text or list of texts")
+            embed = self.embedding_model.embed_texts(texts)
+
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")
 
-        if is_singleton_list(cond_list):
-            single = cond_list[0]
-            if self.mode == "Image":
-                img = single.unsqueeze(0) if single.dim() == 3 else single
-                embed = self.embedding_model.from_image_tensor(img)
-            elif self.mode == "Image Path":
-                embed = self.embedding_model.from_image_path([single])
-            else:
-                embed = self.embedding_model.from_text([single])
-        else:
-            embeds = []
-            for item in cond_list:
-                if self.mode == "Image":
-                    img = item.unsqueeze(0) if item.dim() == 3 else item
-                    em = self.embedding_model.from_image_tensor(img)
-                elif self.mode == "Image Path":
-                    em = self.embedding_model.from_image_path([item])
-                else:
-                    em = self.embedding_model.from_text([item])
-                embeds.append(em.squeeze(0))
-            embed = torch.stack(embeds, dim=0)
         designs = self.preprocessor(designs)
-        preds = self.model(designs)
-        N = preds.size(0)
+        preds   = self.model(designs)
+        N       = preds.size(0)
+        B_cond  = embed.size(0)
 
-        if embed.dim() == 1:
-            embed = embed.unsqueeze(0)
-
-        B_cond = embed.size(0)
         if B_cond == 1 and N > 1:
             embed = embed.expand(N, -1)
         elif B_cond != N:
-            raise ValueError(f"Number of condition embeddings ({B_cond}) does not match number of designs ({N})")
+            raise ValueError(
+                f"Number of condition embeddings ({B_cond}) "
+                f"does not match number of designs ({N})"
+            )
 
         cos_sim = F.cosine_similarity(preds, embed, dim=1)
         return (1 - cos_sim) / 2
@@ -270,33 +270,41 @@ class ErgonomicsEvaluator(EvaluationFunction):
 
         assert "Use Case" in conditioning, "Use Case must be provided in conditioning to calculate ergonomics."
         use_case = conditioning["Use Case"]
-        if use_case.ndim == 1:
-            if use_case.shape != (3,):
-                raise ValueError("If 1D, Use Case array must have shape (3,), got {}".format(use_case.shape))
-            if not np.array_equal(use_case, use_case.astype(bool)):
-                raise ValueError("Use Case 1D array must contain only 0s and 1s")
-            if use_case.sum() != 1:
-                raise ValueError("Use Case 1D array must be a valid one-hot vector (sum == 1)")
-            # Broadcast to (n,3)
-            use_case = np.tile(use_case, (designs.shape[0], 1))
+        if not isinstance(use_case, torch.Tensor):
+            raise TypeError(f"Use Case must be a torch.Tensor, got {type(use_case)}")
 
-        elif use_case.ndim == 2:
+        if use_case.dim() == 1:
+            # single one-hot of shape (3,)
+            if use_case.shape != (3,):
+                raise ValueError(f"If 1D, Use Case tensor must have shape (3,), got {tuple(use_case.shape)}")
+            # must be exactly 0s and 1s
+            if not torch.logical_or(use_case == 0, use_case == 1).all():
+                raise ValueError("Use Case 1D tensor must contain only 0s and 1s")
+            # must sum to 1
+            if use_case.sum().item() != 1:
+                raise ValueError("Use Case 1D tensor must be a valid one-hot vector (sum == 1)")
+            # broadcast to (n,3)
+            n = designs.shape[0]
+            use_case = use_case.unsqueeze(0).repeat(n, 1)
+
+        elif use_case.dim() == 2:
+            # batch of one-hots, shape (n,3)
             n, k = use_case.shape
             if k != 3:
-                raise ValueError("If 2D, Use Case array must have shape (n,3), got {}".format(use_case.shape))
+                raise ValueError(f"If 2D, Use Case tensor must have shape (n,3), got {tuple(use_case.shape)}")
             if n != designs.shape[0]:
-                raise ValueError("Number of rows in Use Case (got {}) must match number of designs ({})"
-                                .format(n, designs.shape[0]))
-            # Check binary values and one-hot per row
-            if not np.array_equal(use_case, use_case.astype(bool)):
-                raise ValueError("Use Case 2D array must contain only 0s and 1s")
-            row_sums = use_case.sum(axis=1)
-            if not np.all(row_sums == 1):
-                bad = np.where(row_sums != 1)[0]
-                raise ValueError(f"Rows at indices {bad.tolist()} are not valid one-hot vectors")
+                raise ValueError(f"Number of rows in Use Case ({n}) must match number of designs ({designs.shape[0]})")
+            # check binary values
+            if not torch.logical_or(use_case == 0, use_case == 1).all():
+                raise ValueError("Use Case 2D tensor must contain only 0s and 1s")
+            # each row sums to exactly 1
+            row_sums = use_case.sum(dim=1)
+            bad_rows = (row_sums != 1).nonzero(as_tuple=False).flatten()
+            if bad_rows.numel() > 0:
+                raise ValueError(f"Rows at indices {bad_rows.tolist()} are not valid one-hot vectors")
 
         else:
-            raise ValueError("Use Case array must be 1D or 2D, got {}-D".format(use_case.ndim))
+            raise ValueError(f"Use Case tensor must be 1D or 2D, got {use_case.dim()}D")
         
         index_to_label = ["road", "mtb", "commute"]
         use_case_list = [index_to_label[idx] for idx in use_case.argmax(axis=1)]
