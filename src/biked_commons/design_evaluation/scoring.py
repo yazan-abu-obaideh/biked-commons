@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import List
+from typing import List, Union
 import torch
 import pandas as pd
 import numpy as np
@@ -17,7 +17,7 @@ class ScoringFunction(ABC):
         self.dtype = dtype
 
     @abstractmethod
-    def return_names(self) -> str:
+    def return_names(self) -> Union[str, List[str]]:
         pass
 
     @abstractmethod
@@ -59,7 +59,7 @@ class Hypervolume(ScoringFunction):
     def return_names(self) -> str:
         return "Hypervolume"
 
-    def evaluate(self, designs, objective_scores, constraint_scores):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names):
         #if ref_point exists, use it, otherwise compute it
         
         validity_mask = np.all(constraint_scores <= 0, axis=1)
@@ -82,7 +82,7 @@ class ConstraintSatisfactionRate(ScoringFunction):
     def return_names(self) -> str:
         return "Constraint Satisfaction Rate"
     
-    def evaluate(self, designs, objective_scores, constraint_scores):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names):
         return np.mean(constraint_scores <=0)
 
 
@@ -122,31 +122,82 @@ class MMD(ScoringFunction):
               + K_RR.sum() / (m * m)
               - 2 * K_GR.sum() / (n * m))
 
-    def evaluate(self, designs, objective_scores, constraint_scores):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names):
         scaled_designs = self.scaler.transform(designs)
         return self.mmd(scaled_designs, self.reference_designs)
+    
+
+class MinimumObjective(ScoringFunction):
+    def __init__(self):
+        super().__init__()
+
+    def return_names(self) -> List[str]:
+        return self.names
+
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names):
+        self.names = [f"Min {name}" for name in objective_names]
+        return np.min(objective_scores, axis=0)
+    
+class MeanObjective(ScoringFunction):
+    def __init__(self):
+        super().__init__()
+
+    def return_names(self) -> List[str]:
+        return self.names
+
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names):
+        self.names = [f"Mean {name}" for name in objective_names]
+        return np.mean(objective_scores, axis=0)
     
 def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functions: List[EvaluationFunction], column_names: List[str]):
 
     evaluator, requirement_names, requirement_types = construct_tensor_evaluator(evaluation_functions, column_names)
-    score_names = [scoring_function.return_names() for scoring_function in scoring_functions]
+    requirement_names = np.array(requirement_names)
+    isobjective = torch.tensor(requirement_types) == 1
+    objective_names = requirement_names[isobjective]
+    constraint_names = requirement_names[~isobjective]
+    
 
     def scorer(designs: torch.Tensor, condition: dict = {}) -> pd.Series:
+        score_names = []
         scores = []
         evaluation_scores = evaluator(designs, condition)
-        isobjective = torch.tensor(requirement_types) == 1
         objective_scores = evaluation_scores[:, isobjective].detach().numpy()
         constraint_scores = evaluation_scores[:, ~isobjective].detach().numpy()
         for scoring_function in scoring_functions:
-            score = scoring_function.evaluate(designs, objective_scores, constraint_scores)
-            scores.append(score)
+            raw = scoring_function.evaluate(designs,
+                              objective_scores,
+                              constraint_scores,
+                              objective_names,
+                              constraint_names)
+
+            # ensure we have a 1D numpy array for scores
+            arr = np.atleast_1d(raw)
+
+            # pull out the declared name(s)
+            names = scoring_function.return_names()
+            if isinstance(names, str):
+                names = [names]
+
+            # extend our lists
+            for n, val in zip(names, arr):
+                score_names.append(n)
+                scores.append(val)
         scores = np.array(scores)
         scores = pd.Series(scores, index=score_names)
         return scores
     return scorer
 
+MainScores: List[ScoringFunction] = [
+    Hypervolume(),
+    ConstraintSatisfactionRate(),
+    MMD(),
+]
 
-
+DetailedScores: List[ScoringFunction] = [
+    MinimumObjective(),
+    MeanObjective(),
+]
 
 
 
