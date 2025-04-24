@@ -1,5 +1,5 @@
 from abc import abstractmethod, ABC
-from typing import List, Union
+from typing import List
 import torch
 import pandas as pd
 import numpy as np
@@ -17,7 +17,7 @@ class ScoringFunction(ABC):
         self.dtype = dtype
 
     @abstractmethod
-    def return_names(self) -> Union[str, List[str]]:
+    def return_names(self) -> List[str]:
         pass
 
     @abstractmethod
@@ -30,6 +30,7 @@ def compute_ref_point(ref_scores):
     return ref_point
 
 def recompute_ref_point():
+    print("Calculating reference point for scoring functions...")
     data = pd.read_csv(split_datasets_path("CLIP_X_test.csv"), index_col=0)
     num_data = data.shape[0]
     rider_condition = conditioning.sample_riders(num_data, split="test")
@@ -46,18 +47,22 @@ def recompute_ref_point():
     objective_scores = scores[:, isobjective].detach().numpy()
     constraint_scores = scores[:, ~isobjective].detach().numpy()
     ref_point = compute_ref_point(objective_scores)
-    np.save("HV_ref_point.npy", ref_point)
+
+    np.save("obj_ref_point.npy", ref_point)
+
+def get_ref_point():
+    if not os.path.exists("obj_ref_point.npy"):
+        recompute_ref_point()
+    ref_point = np.load("obj_ref_point.npy")
+    return ref_point
 
 class Hypervolume(ScoringFunction):
     def __init__(self):
         super().__init__()
-        ref_point_dir = "HV_ref_point.npy"
-        if not os.path.exists(ref_point_dir):
-            recompute_ref_point()
-        self.ref_point = np.load(ref_point_dir)
+        self.ref_point = get_ref_point()
 
-    def return_names(self) -> str:
-        return "Hypervolume"
+    def return_names(self) -> List[str]:
+        return ["Hypervolume"]
 
     def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names):
         #if ref_point exists, use it, otherwise compute it
@@ -79,8 +84,8 @@ class ConstraintSatisfactionRate(ScoringFunction):
     def __init__(self):
         super().__init__()
 
-    def return_names(self) -> str:
-        return "Constraint Satisfaction Rate"
+    def return_names(self) -> List[str]:
+        return ["Constraint Satisfaction Rate"]
     
     def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names):
         return np.mean(constraint_scores <=0)
@@ -100,8 +105,8 @@ class MMD(ScoringFunction):
             gamma = self.compute_gamma(self.reference_designs)
         self.gamma = gamma
 
-    def return_names(self) -> str:
-        return "Maximum Mean Discrepancy"
+    def return_names(self) -> List[str]:
+        return ["Maximum Mean Discrepancy"]
 
     def compute_gamma(self, ref: np.ndarray) -> float:
         dists = np.sum((ref[:, None, :] - ref[None, :, :])**2, axis=2)
@@ -156,30 +161,25 @@ def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functi
     isobjective = torch.tensor(requirement_types) == 1
     objective_names = requirement_names[isobjective]
     constraint_names = requirement_names[~isobjective]
-    
+
+    ref_point = get_ref_point() #1D numpy array
 
     def scorer(designs: torch.Tensor, condition: dict = {}) -> pd.Series:
         score_names = []
         scores = []
         evaluation_scores = evaluator(designs, condition)
         objective_scores = evaluation_scores[:, isobjective].detach().numpy()
+        ref_point_exp = np.expand_dims(ref_point, axis=0)
+        ref_point_exp = np.repeat(ref_point_exp, objective_scores.shape[0], axis=0)
+        objective_scores[np.isnan(objective_scores)] = ref_point_exp[np.isnan(objective_scores)]
         constraint_scores = evaluation_scores[:, ~isobjective].detach().numpy()
         for scoring_function in scoring_functions:
-            raw = scoring_function.evaluate(designs,
-                              objective_scores,
-                              constraint_scores,
-                              objective_names,
-                              constraint_names)
+            raw = scoring_function.evaluate(designs, objective_scores, constraint_scores, objective_names, constraint_names)
 
-            # ensure we have a 1D numpy array for scores
             arr = np.atleast_1d(raw)
 
-            # pull out the declared name(s)
             names = scoring_function.return_names()
-            if isinstance(names, str):
-                names = [names]
 
-            # extend our lists
             for n, val in zip(names, arr):
                 score_names.append(n)
                 scores.append(val)

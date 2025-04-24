@@ -310,7 +310,7 @@ class ErgonomicsEvaluator(EvaluationFunction):
         use_case_list = [index_to_label[idx] for idx in use_case.argmax(axis=1)]
 
         int_pts = interface_points.calculate_interface_points(designs)
-        predictions = joint_angles.adjusted_nll(int_pts, rider_dims, use_case_list)
+        predictions = joint_angles.dist_to_1SD(int_pts, rider_dims, use_case_list)
         return predictions
 
 

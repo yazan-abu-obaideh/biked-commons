@@ -159,6 +159,8 @@ def knee_extension_angle(bike_vectors, body_vectors, CA, ret_a2=False):
 
     return (alpha_3 + alpha_4) * (180 / torch.pi)
 
+def law_of_cosines(a, b, c):
+    return (a**2 + b**2 - c**2) / (2 * a * b)
 
 def back_armpit_angles(bike_vectors, body_vectors):
     """
@@ -183,21 +185,44 @@ def back_armpit_angles(bike_vectors, body_vectors):
     SX = bike_vectors[:, 2:3] * -1  # Hip x (flip because convension here is positive x is forward on the bike)
     SY = bike_vectors[:, 3:4]  # Hip y
     CL = bike_vectors[:, 4:5]  # Crank length
-
+    
+    print(HX[3,:])
+    #saddle to handle measurements
     sth_dx = HX - SX
     sth_dy = HY - SY
     sth_dist = torch.sqrt(sth_dx**2 + sth_dy**2)
     sth_ang = torch.atan2(sth_dy, sth_dx)
 
     # Law of cosines to simulate elbow bend
-    x_1 = (AL / 2) ** 2 + (AL / 2) ** 2 - 2 * (AL / 2) * (AL / 2) * torch.cos(EA)
+    shoulder_to_hand = (AL / 2) ** 2 + (AL / 2) ** 2 - 2 * (AL / 2) * (AL / 2) * torch.cos(EA)
 
-    tors_ang = torch.arccos(torch.clamp((TL ** 2 + sth_dist ** 2 - x_1) / (2 * TL * sth_dist), -1.0, 1.0))
-    back_angle = tors_ang + sth_ang
+    tors_angle_cos = law_of_cosines(sth_dist, TL, shoulder_to_hand)
 
-    armpit_to_wrist = torch.arccos(torch.clamp((TL ** 2 + x_1 - sth_dist ** 2) / (2 * TL * torch.sqrt(x_1)), -1.0, 1.0))
+    tors_angle_clamped = torch.clamp(tors_angle_cos, -1.0, 1.0)
+    tors_ang = torch.arccos(tors_angle_clamped)
 
-    return back_angle * (180 / torch.pi), armpit_to_wrist * (180 / torch.pi)
+    shoulder_angle_cos = law_of_cosines(shoulder_to_hand, TL, sth_dist)
+    shoulder_angle_clamped = torch.clamp(shoulder_angle_cos, -1.0, 1.0)
+    shoulder_ang = torch.arccos(shoulder_angle_clamped)
+
+    #if less than one set angle to 180 degrees and add shoulder_to_hand - sth_dist - TL to give gradient
+    case1 = shoulder_to_hand > sth_dist + TL #results in 180 degrees for back angle and 0 degrees for shoulder angle
+    case1_correction_back = shoulder_to_hand - sth_dist - TL
+    case1_correction_shoulder = -(shoulder_to_hand - sth_dist - TL)
+
+    case2 = sth_dist> TL + shoulder_to_hand #results in 0 degrees for back angle and 180 degrees for shoulder angle
+    case2_correction_back = - (sth_dist - TL - shoulder_to_hand)
+    case2_correction_shoulder = sth_dist - TL - shoulder_to_hand
+
+    case3 = TL > shoulder_to_hand + sth_dist #results in 0 degrees for back angle and 0 degrees for shoulder angle
+    case3_correction_back = - (TL - shoulder_to_hand - sth_dist)
+    case3_correction_shoulder = - (TL - shoulder_to_hand - sth_dist)
+
+    corrected_tors_ang = tors_ang + case1*case1_correction_back + case2*case2_correction_back + case3*case3_correction_back
+    corrected_shoulder_ang = shoulder_ang + case1*case1_correction_shoulder + case2*case2_correction_shoulder + case3*case3_correction_shoulder
+
+    back_angle = corrected_tors_ang + sth_ang
+    return back_angle * (180 / torch.pi), corrected_shoulder_ang * (180 / torch.pi)
 
 
 def all_angles(bike_vectors, body_vectors):
@@ -258,5 +283,28 @@ def adjusted_nll(bike_vectors: torch.Tensor, body_vectors: torch.Tensor, use_vec
     # Difference gives adjusted NLL
     adjusted_nll = log_pdf_optimal - log_pdf_actual  # = 0 at the peak
     return adjusted_nll
+
+def dist_to_1SD(bike_vectors: torch.Tensor, body_vectors: torch.Tensor, use_vec: list[str]) -> torch.Tensor:
+    """
+    Distance to 1 standard deviation from the mean for each angle.
+    Output: (N, 3) torch tensor: [knee_dist, back_dist, awrist_dist]
+    """
+
+    angles = all_angles(bike_vectors, body_vectors)  # (N, 3)
+    print(angles)
+    means = torch.tensor([
+        [USE_DICT[u]["opt_knee_angle"][0], USE_DICT[u]["opt_back_angle"][0], USE_DICT[u]["opt_awrist_angle"][0]]
+        for u in use_vec
+    ], dtype=angles.dtype, device=angles.device)
+
+    stds = torch.tensor([
+        [USE_DICT[u]["opt_knee_angle"][1], USE_DICT[u]["opt_back_angle"][1], USE_DICT[u]["opt_awrist_angle"][1]]
+        for u in use_vec
+    ], dtype=angles.dtype, device=angles.device)
+
+    # Distance to 1 standard deviation from the mean
+    dist_to_1SD = torch.abs(angles - means) - stds
+    dist_to_1SD = torch.clamp(dist_to_1SD, min=0)  # Ensure non-negative distances
+    return dist_to_1SD
 
 
