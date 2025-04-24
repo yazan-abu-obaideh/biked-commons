@@ -89,7 +89,7 @@ class FrameValidityEvaluator(EvaluationFunction):
         self.converter = framed.clip_to_framed_tensor_builder(ordered_columns.ORDERED_COLUMNS, framed.FRAMED_ORDERED_COLUMNS)
 
     def variable_names(self) -> List[str]:
-        return ordered_columns.ORDERED_COLUMNS
+        return ordered_columns.bike_bench_columns
 
     def return_names(self) -> List[str]:
         return ['Predicted Frame Validity']
@@ -117,7 +117,7 @@ class StructuralEvaluator(EvaluationFunction):
         self.converter = framed.clip_to_framed_tensor_builder(ordered_columns.ORDERED_COLUMNS, framed.FRAMED_ORDERED_COLUMNS)
 
     def variable_names(self) -> List[str]:
-        return ordered_columns.ORDERED_COLUMNS
+        return ordered_columns.bike_bench_columns
 
     def return_names(self) -> List[str]:
         return ['Mass', 'Planar Compliance', 'Transverse Compliance', 'Eccentric Compliance', 'Planar Safety Factor', 'Eccentric Safety Factor']
@@ -226,7 +226,7 @@ class AestheticsEvaluator(EvaluationFunction):
 class ValidationEvaluator(EvaluationFunction):
     def __init__(self, device="cpu", dtype=torch.float32):
         super().__init__(device, dtype)
-        self.clip_parameters = pd.read_csv(split_datasets_path("CLIP_X_test.csv"), index_col=0).columns.tolist() #TODO maybe include a list somewhere to avoid loading a dataset?
+        self.clip_parameters = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0).columns.tolist() #TODO maybe include a list somewhere to avoid loading a dataset?
         validator, validation_names = construct_tensor_validator(CLIPS_VALIDATIONS, self.clip_parameters)
         self.validator = validator
         self.validation_names = validation_names
@@ -310,6 +310,7 @@ class ErgonomicsEvaluator(EvaluationFunction):
         use_case_list = [index_to_label[idx] for idx in use_case.argmax(axis=1)]
 
         int_pts = interface_points.calculate_interface_points(designs)
+
         predictions = joint_angles.dist_to_1SD(int_pts, rider_dims, use_case_list)
         return predictions
 
@@ -408,8 +409,8 @@ StandardEvaluations: List[EvaluationFunction] = [
     UsabilityEvaluator(),
     AeroEvaluator(),
     ErgonomicsEvaluator(),
-    AestheticsEvaluator(mode="Text", batch_size=64),
+    # AestheticsEvaluator(mode="Text", batch_size=64),
     StructuralEvaluator(),
-    ValidationEvaluator(),
-    FrameValidityEvaluator()
+    # ValidationEvaluator(),
+    # FrameValidityEvaluator()
 ]
