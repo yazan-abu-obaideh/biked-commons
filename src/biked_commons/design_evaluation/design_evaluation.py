@@ -411,6 +411,6 @@ StandardEvaluations: List[EvaluationFunction] = [
     ErgonomicsEvaluator(),
     # AestheticsEvaluator(mode="Text", batch_size=64),
     StructuralEvaluator(),
-    # ValidationEvaluator(),
-    # FrameValidityEvaluator()
+    ValidationEvaluator(),
+    FrameValidityEvaluator()
 ]

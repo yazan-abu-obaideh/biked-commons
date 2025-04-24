@@ -186,7 +186,6 @@ def back_armpit_angles(bike_vectors, body_vectors):
     SY = bike_vectors[:, 3:4]  # Hip y
     CL = bike_vectors[:, 4:5]  # Crank length
     
-    print(HX[3,:])
     #saddle to handle measurements
     sth_dx = HX - SX
     sth_dy = HY - SY
@@ -291,7 +290,6 @@ def dist_to_1SD(bike_vectors: torch.Tensor, body_vectors: torch.Tensor, use_vec:
     """
 
     angles = all_angles(bike_vectors, body_vectors)  # (N, 3)
-    print(angles)
     means = torch.tensor([
         [USE_DICT[u]["opt_knee_angle"][0], USE_DICT[u]["opt_back_angle"][0], USE_DICT[u]["opt_awrist_angle"][0]]
         for u in use_vec
