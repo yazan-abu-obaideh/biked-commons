@@ -402,3 +402,14 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
     return evaluate_dataframe
 
 
+
+
+StandardEvaluations: List[EvaluationFunction] = [
+    UsabilityEvaluator(),
+    AeroEvaluator(),
+    ErgonomicsEvaluator(),
+    AestheticsEvaluator(mode="Text", batch_size=64),
+    StructuralEvaluator(),
+    ValidationEvaluator(),
+    FrameValidityEvaluator()
+]
