@@ -358,18 +358,18 @@ def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], c
     # Flatten all return names across evaluators
     all_return_names = []
     all_return_types = []
-    for vf in evaluation_functions:
-        all_return_names.extend(vf.return_names())
-        all_return_types.extend(vf.return_types())
+    for evaluation_function in evaluation_functions:
+        all_return_names.extend(evaluation_function.return_names())
+        all_return_types.extend(evaluation_function.return_types())
 
     def evaluate_tensor(designs: torch.Tensor, conditioning={}) -> torch.Tensor:
         n = designs.shape[0]
-        total_outputs = sum(len(vf.return_names()) for vf in evaluation_functions)
+        total_outputs = sum(len(evaluation_function.return_names()) for evaluation_function in evaluation_functions)
         results_tensor = torch.zeros((n, total_outputs), dtype=torch.float32, device=designs.device)
 
         current_col = 0
         for evaluation_function in evaluation_functions:
-            var_indices = [column_names.index(var) for var in vf.variable_names()]
+            var_indices = [column_names.index(var) for var in evaluation_function.variable_names()]
             sliced_designs = designs[:, var_indices]
 
             res = evaluation_function.evaluate(sliced_designs, conditioning)  # Expect shape (n,) or (n, k)
@@ -406,7 +406,7 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
 
 
 StandardEvaluations: List[EvaluationFunction] = [
-    # UsabilityEvaluator(),
+    UsabilityEvaluator(),
     AeroEvaluator(),
     ErgonomicsEvaluator(),
     # AestheticsEvaluator(mode="Text", batch_size=64),

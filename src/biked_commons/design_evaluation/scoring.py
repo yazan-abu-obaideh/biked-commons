@@ -96,7 +96,7 @@ class ConstraintSatisfactionRate(ScoringFunction):
 
 class MMD(ScoringFunction): 
 
-    def __init__(self, gamma=None):
+    def __init__(self, batch_size = 1024, gamma=None):
         super().__init__()
         raw_ref  = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0).values.astype(np.float32)
         
@@ -104,9 +104,12 @@ class MMD(ScoringFunction):
         self.scaler.fit(raw_ref)
         self.reference_designs = self.scaler.transform(raw_ref)
 
+        self.batch_size = batch_size
+
         if gamma is None:
             gamma = self.compute_gamma(self.reference_designs)
         self.gamma = gamma
+        
 
     def return_names(self) -> List[str]:
         return ["Maximum Mean Discrepancy"]
@@ -116,19 +119,28 @@ class MMD(ScoringFunction):
         med = np.median(dists)
         return 1.0 / (2 * med) if med > 0 else 1.0
 
-    def rbf_kernel(self, A: np.ndarray, B: np.ndarray, gamma: float) -> np.ndarray:
-        dists = np.sum((A[:, None, :] - B[None, :, :])**2, axis=2)
-        return np.exp(-gamma * dists)
+    def rbf_kernel_sum(self, A: np.ndarray, B: np.ndarray, gamma: float) -> float:
+        """
+        Compute sum_{i,j} exp(-gamma * ||A[i] - B[j]||^2)
+        by blocking through rows of A and B in chunks of size batch_size.
+        """
+        total = 0.0
+        for i in range(0, A.shape[0], self.batch_size):
+            Ai = A[i : i + self.batch_size]
+            for j in range(0, B.shape[0], self.batch_size):
+                Bj = B[j : j + self.batch_size]
+                # compute squared‐distances of shape (len(Ai), len(Bj))
+                D2 = np.sum((Ai[:, None, :] - Bj[None, :, :])**2, axis=2)
+                total += np.exp(-gamma * D2).sum()
+        return total
 
     def mmd(self, gen: np.ndarray, ref: np.ndarray) -> float:
-        K_GG = self.rbf_kernel(gen, gen, self.gamma)
-        K_RR = self.rbf_kernel(ref, ref, self.gamma)
-        K_GR = self.rbf_kernel(gen, ref, self.gamma)
+        K_GG = self.rbf_kernel_sum(gen, gen, self.gamma)
+        K_RR = self.rbf_kernel_sum(ref, ref, self.gamma)
+        K_GR = self.rbf_kernel_sum(gen, ref, self.gamma)
 
         n, m = gen.shape[0], ref.shape[0]
-        return (K_GG.sum() / (n * n)
-              + K_RR.sum() / (m * m)
-              - 2 * K_GR.sum() / (n * m))
+        return (K_GG / (n * n)) + (K_RR / (m * m)) - (2 * K_GR / (n * m))
 
     def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
         scaled_designs = self.scaler.transform(designs)
