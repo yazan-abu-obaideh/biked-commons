@@ -180,6 +180,19 @@ class ConstraintViolationRate(ScoringFunction):
         self.names = [f"Constraint Violation Rate: {name}" for name in constraint_names]
         validity_boolean = constraint_scores > 0
         return np.mean(validity_boolean, axis=0)
+    
+class MeanConstraintViolationMagnitude(ScoringFunction):
+    def __init__(self):
+        super().__init__()
+
+    def return_names(self) -> List[str]:
+        return self.names
+
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
+        self.names = [f"Mean Constraint Violation Magnitude: {name}" for name in constraint_names]
+        constraint_scores = np.clip(constraint_scores, a_min=0, a_max=None)
+        meanscores = np.mean(constraint_scores, axis=0)
+        return meanscores
 
 def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functions: List[EvaluationFunction], column_names: List[str]):
 
@@ -225,6 +238,7 @@ DetailedScores: List[ScoringFunction] = [
     MinimumObjective(),
     MeanObjective(),
     ConstraintViolationRate(),
+    MeanConstraintViolationMagnitude(),
 ]
 
 
