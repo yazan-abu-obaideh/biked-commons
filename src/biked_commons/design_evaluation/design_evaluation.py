@@ -368,11 +368,11 @@ def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], c
         results_tensor = torch.zeros((n, total_outputs), dtype=torch.float32, device=designs.device)
 
         current_col = 0
-        for vf in evaluation_functions:
+        for evaluation_function in evaluation_functions:
             var_indices = [column_names.index(var) for var in vf.variable_names()]
             sliced_designs = designs[:, var_indices]
 
-            res = vf.evaluate(sliced_designs, conditioning)  # Expect shape (n,) or (n, k)
+            res = evaluation_function.evaluate(sliced_designs, conditioning)  # Expect shape (n,) or (n, k)
 
             if res.dim() == 1:
                 res = res.unsqueeze(1)
@@ -406,7 +406,7 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
 
 
 StandardEvaluations: List[EvaluationFunction] = [
-    UsabilityEvaluator(),
+    # UsabilityEvaluator(),
     AeroEvaluator(),
     ErgonomicsEvaluator(),
     # AestheticsEvaluator(mode="Text", batch_size=64),
