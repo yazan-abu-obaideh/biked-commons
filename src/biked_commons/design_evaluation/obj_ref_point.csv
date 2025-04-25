@@ -1,9 +1,10 @@
 ,0
-Drag Force,7.652876
-Knee Angle Error,341.78088
-Hip Angle Error,72.57114
-Arm Angle Error,97.584274
-Mass,20.529053
-Planar Compliance,209.66443
+Usability Score - 0 to 1,0.79141116
+Drag Force,27.458233
+Knee Angle Error,192.69975
+Hip Angle Error,819.7736
+Arm Angle Error,858.3954
+Mass,20.529057
+Planar Compliance,209.66444
 Transverse Compliance,295.83948
 Eccentric Compliance,135.6246
