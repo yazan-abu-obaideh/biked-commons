@@ -1,6 +1,8 @@
 from typing import List
 import torch
+import math
 from biked_commons.validation.base_validation_function import ValidationFunction
+
 
 
 class SaddleHeightTooSmall(ValidationFunction):
@@ -32,11 +34,11 @@ class BsdRearTooSmall(ValidationFunction):
         return "Bsd rear too small"
 
     def variable_names(self) -> List[str]:
-        return ["BSD rear", "ERD rear"]
+        return ["RDBSD", "RDERD"]
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
-        bsd_rear, erd_rear = designs[:, :len(self.variable_names())].T
-        return erd_rear - bsd_rear
+        RDBSD, RDERD = designs[:, :len(self.variable_names())].T
+        return RDBSD - RDERD
 
 
 class BsdFrontTooSmall(ValidationFunction):
@@ -44,11 +46,11 @@ class BsdFrontTooSmall(ValidationFunction):
         return "Bsd front too small"
 
     def variable_names(self) -> List[str]:
-        return ["BSD front", "ERD front"]
+        return ["FDBSD", "FDERD"]
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
-        bsd_front, erd_front = designs[:, :len(self.variable_names())].T
-        return erd_front - bsd_front
+        FDBSD, FDERD = designs[:, :len(self.variable_names())].T
+        return FDBSD - FDERD
 
 
 class HeadTubeLowerExtensionTooGreat(ValidationFunction):
@@ -88,6 +90,80 @@ class ChainStayLessThanZero(ValidationFunction):
         return 0 - cs_textfield
 
 
+class ChainStayShouldBeGreaterThanWheelRadius(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "Chain stay should be greater than wheel radius"
+
+    def variable_names(self) -> List[str]:
+        return ["CS textfield", "Wheel diameter rear"]
+
+    def validate(self, designs: torch.tensor) -> torch.tensor:
+        CS_textfield, RD = designs[:, :len(self.variable_names())].T
+        return (RD/2) - CS_textfield
+    
+
+class SeatStayShouldBeGreaterThanWheelRadius(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "Seat stay should be greater than wheel radius"
+
+    def variable_names(self) -> List[str]:
+        return ["CS textfield", "BB textfield","Seat tube length", "Seat stay junction0", "Seat angle", "Wheel diameter rear"]
+
+    def validate(self, designs: torch.tensor) -> torch.tensor:
+        CS_textfield, BB_textfield, Seat_tube_length, Seat_stay_junction0, Seat_angle, RD = designs[:, :len(self.variable_names())].T
+        Seat_angle_rad = (Seat_angle * math.pi) / 180
+        x = Seat_tube_length-(BB_textfield/torch.sin(Seat_angle_rad))-Seat_stay_junction0
+        y = BB_textfield/torch.tan(Seat_angle_rad)
+        z = torch.sqrt((CS_textfield ** 2)-(BB_textfield ** 2))
+        h = z-y
+        g = torch.sqrt(h**2 + x**2 - 2*h*x*torch.cos(Seat_angle_rad))
+        return (RD / 2) - g
+    
+class ThePedalShouldntIntersectTheFrontWheel(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "The pedal shouldn't intersect the front wheel"
+
+    def variable_names(self) -> List[str]:
+        return ["Stack", "Head tube length textfield", "Head tube lower extension2", "Head angle", "BB textfield", "DT Length", "FORK0R", "Wheel diameter front"]
+
+    def validate(self, designs: torch.tensor) -> torch.tensor:
+        Stack, Head_tube_length_textfield, Head_tube_lower_extension2, Head_angle, BB_textfield, DT_length, fork0r, FD = designs[:, :len(self.variable_names())].T
+        # Extract variables from the DataFrame
+        HTL = Head_tube_length_textfield
+        HTLX = Head_tube_lower_extension2
+        HTA = (Head_angle * math.pi) / 180  # Convert degrees to radians
+        BBD = BB_textfield
+        DTL = DT_length
+
+        # Calculate DTJY and DTJX
+        DTJY = Stack - (HTL - HTLX) * torch.sin(HTA)
+        DTJX = torch.sqrt(DTL ** 2 - DTJY ** 2)
+
+        # Calculate FWX and FCD
+        FWX = DTJX + (DTJY - BBD) / torch.tan(HTA)
+        shift = fork0r/torch.sin(HTA)
+        FWX = FWX + shift
+
+        FCD = torch.sqrt(FWX ** 2 + BBD ** 2)
+        wheel_radius = FD/2
+        crank_length = 172.5
+        return  (crank_length + wheel_radius + 40) - FCD
+    
+class TheCrankShouldntHitTheGroundWhenItIsInItsLowerPosition(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "The crank shouldn't hit the ground when it is in its lower position"
+
+    def variable_names(self) -> List[str]:
+        return ["BB textfield"]
+
+    def validate(self, designs: torch.tensor) -> torch.tensor:
+        BB_textfield = designs[:, :len(self.variable_names())].T
+        # Extract variables from the DataFrame
+        wheel_radius = 674/2
+        crank_length = 172.5
+        return  (crank_length + BB_textfield) - wheel_radius
+
+
 CLIPS_VALIDATIONS: List[ValidationFunction] = [
     SaddleHeightTooSmall(),
     SeatPostTooShort(),
@@ -95,5 +171,9 @@ CLIPS_VALIDATIONS: List[ValidationFunction] = [
     BsdFrontTooSmall(),
     HeadTubeLowerExtensionTooGreat(),
     HeadTubeLengthTooGreat(),
-    ChainStayLessThanZero()
+    ChainStayLessThanZero(),
+    ChainStayShouldBeGreaterThanWheelRadius(),
+    SeatStayShouldBeGreaterThanWheelRadius(),
+    ThePedalShouldntIntersectTheFrontWheel(),
+    TheCrankShouldntHitTheGroundWhenItIsInItsLowerPosition()
 ]

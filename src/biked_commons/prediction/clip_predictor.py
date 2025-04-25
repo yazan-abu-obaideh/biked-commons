@@ -12,20 +12,6 @@ def remove_wall_thickness(x, device):
     second_chunk = x[:, 33:]
     x = torch.cat((first_chunk, second_chunk), dim=1)
     return x
-
-class ClipPreprocessor(nn.Module):
-    def __init__(self, device: torch.device = None):
-        super().__init__()
-        scaler_path = models_and_scalers_path("clip_scaler.pt")
-        self.device = device or torch.device('cpu')
-        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device)
-        self.scaler.to(self.device)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        x = remove_wall_thickness(x, self.device)
-        return self.scaler(x)
-
-    __call__ = forward
     
 class ResidualBlock(nn.Module):
     def __init__(self, input_size, layer_size, num_layers):

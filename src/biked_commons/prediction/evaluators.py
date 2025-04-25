@@ -2,19 +2,23 @@ import pandas as pd
 import numpy as np
 import torch
 from sklearn.metrics import f1_score, r2_score, mean_squared_error
+from biked_commons.prediction.loaders import one_hot_encode_material
 
-def evaluate_frame_validity(model, preprocessing_fn, device="cpu"):
+def evaluate_validity(model, preprocessing_fn, device="cpu"):
     X_test = pd.read_csv('../../resources/datasets/split_datasets/validity_X_test.csv', index_col=0)    
     Y_test = pd.read_csv('../../resources/datasets/split_datasets/validity_Y_test.csv', index_col=0)
-    X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    X_test = one_hot_encode_material(X_test)
+    X_test_tensor = torch.tensor(X_test.values.astype(float), dtype=torch.float32).to(device)
     X_test_tensor = preprocessing_fn(X_test_tensor)
     predictions = model(X_test_tensor).detach().cpu().numpy()
+    predictions = predictions>= 0.5
     return f1_score(Y_test, predictions)
 
 def evaluate_structure(model, preprocessing_fn, device="cpu"):
     Y_test = pd.read_csv('../../resources/datasets/split_datasets/structure_Y_test.csv', index_col=0)
     X_test = pd.read_csv('../../resources/datasets/split_datasets/structure_X_test.csv', index_col=0)
-    X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    X_test = one_hot_encode_material(X_test)
+    X_test_tensor = torch.tensor(X_test.values.astype(float), dtype=torch.float32).to(device)
     X_test_tensor = preprocessing_fn(X_test_tensor)
     predictions = model(X_test_tensor).detach().cpu().numpy()
     return r2_score(Y_test, predictions)
@@ -22,7 +26,7 @@ def evaluate_structure(model, preprocessing_fn, device="cpu"):
 def evaluate_aero(model, preprocessing_fn, device="cpu"):
     Y_test = pd.read_csv('../../resources/datasets/split_datasets/aero_Y_test.csv', index_col=0)
     X_test = pd.read_csv('../../resources/datasets/split_datasets/aero_X_test.csv', index_col=0)
-    X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    X_test_tensor = torch.tensor(X_test.values.astype(float), dtype=torch.float32).to(device)
     X_test_tensor = preprocessing_fn(X_test_tensor)
     predictions = model(X_test_tensor).detach().cpu().numpy()
     return r2_score(Y_test, predictions)
@@ -30,7 +34,7 @@ def evaluate_aero(model, preprocessing_fn, device="cpu"):
 def evaluate_clip(model, preprocessing_fn, device="cpu"):
     Y_test = pd.read_csv("../../resources/datasets/split_datasets/CLIP_Y_test.npy", index_col=0)
     X_test = np.load("../../resources/datasets/split_datasets/CLIP_X_test.npy")
-    X_test_tensor = torch.tensor(X_test.values, dtype=torch.float32).to(device)
+    X_test_tensor = torch.tensor(X_test.values.astype(float), dtype=torch.float32).to(device)
     X_test_tensor = preprocessing_fn(X_test_tensor)
     predictions = model(X_test_tensor).detach().cpu().numpy()
     return mean_squared_error(Y_test, predictions)

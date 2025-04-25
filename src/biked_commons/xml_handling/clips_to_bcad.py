@@ -30,6 +30,7 @@ def clips_to_cad(df: pd.DataFrame):
         DTJX = np.sqrt(DTL ** 2 - DTJY ** 2)
         FWX = DTJX + (DTJY - BBD) / np.tan(HTA)
         FCD = np.sqrt(FWX ** 2 + BBD ** 2)
+        #TODO add fork0R shift for bike_bench dataset
         df.at[idx, "FCD textfield"] = FCD
     df.drop(["DT Length"], axis=1, inplace=True)
     for column in list(df.columns):

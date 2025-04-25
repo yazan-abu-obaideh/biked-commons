@@ -88,7 +88,6 @@ def calculate_interface_points(x, dtype=torch.float32):
     posx += mask0 * (-h0 * cos_angle + v0 * sin_angle)
     posy += mask0 * (-h0 * sin_angle - v0 * cos_angle)
 
-
     hand_x = handlebar_mount_x + posx  # hand_x
     hand_y = handlebar_mount_y + posy  # hand_y
     

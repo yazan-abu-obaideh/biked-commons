@@ -1,6 +1,7 @@
 import torch
 import dill
 from torch import nn
+from biked_commons.resource_utils import models_and_scalers_path
 
 
 class TorchStandardScaler(nn.Module):
@@ -36,16 +37,30 @@ class TorchStandardScaler(nn.Module):
     # alias
     transform = forward
 
+class Preprocessor(nn.Module):
+    def __init__(self, scaler_path, preprocess_fn, device: torch.device = None):
+        super().__init__()
+        self.device = device or torch.device('cpu')
+        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device, weights_only=False)
+        self.scaler.to(self.device)
+        self.preprocess_fn = preprocess_fn
 
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if self.preprocess_fn:
+            x = self.preprocess_fn(x, self.device)
+        return self.scaler(x)
+
+    __call__ = forward
 
 class DNN(nn.Module):
-    def __init__(self, input_dim):
+    def __init__(self, input_dim, output_dim=1, classification=False):
         super(DNN, self).__init__()
         self.fc1 = nn.Linear(input_dim, 256)
         self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, 1)
+        self.fc3 = nn.Linear(128, output_dim)
         self.relu = nn.ReLU()
         self.dropout = nn.Dropout(0.2)
+        self.classification = classification
 
     def forward(self, x):
         x = self.relu(self.fc1(x))
@@ -53,4 +68,7 @@ class DNN(nn.Module):
         x = self.relu(self.fc2(x))
         x = self.dropout(x)
         x = self.fc3(x)
+        if self.classification:
+            x = torch.sigmoid(x)
         return x
+    
