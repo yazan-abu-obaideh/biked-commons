@@ -41,7 +41,7 @@ class Preprocessor(nn.Module):
     def __init__(self, scaler_path, preprocess_fn, device: torch.device = None):
         super().__init__()
         self.device = device or torch.device('cpu')
-        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device)
+        self.scaler: TorchStandardScaler = torch.load(scaler_path, map_location=self.device, weights_only=False)
         self.scaler.to(self.device)
         self.preprocess_fn = preprocess_fn
 
