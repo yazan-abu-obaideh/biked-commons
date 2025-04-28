@@ -7,7 +7,7 @@ import random
 from tqdm import tqdm, trange
 from scipy.spatial import distance
 
-from biked_commons.resource_utils import resource_path
+from biked_commons.resource_utils import resource_path, split_datasets_path
 
 
 def prepare_validity():
@@ -515,7 +515,7 @@ def generate_descriptions(df):
 def prepare_text_descriptions():
 
     data = pd.read_csv(split_datasets_path("CLIP_X_test.csv"), index_col=0)
-    descriptions = prepare.generate_descriptions(data)
+    descriptions = generate_descriptions(data)
     with open(split_datasets_path("text_descriptions_test.txt"), "w") as f:
         for desc in tqdm(descriptions):
             f.write(desc + "\n")
@@ -523,7 +523,7 @@ def prepare_text_descriptions():
     data = pd.read_csv(split_datasets_path("CLIP_X_train.csv"), index_col=0)
     #sample 100k
     data = data.sample(100000)
-    descriptions = prepare.generate_descriptions(data)
+    descriptions = generate_descriptions(data)
     with open(split_datasets_path("text_descriptions_train.txt"), "w") as f:
         for desc in tqdm(descriptions):
             f.write(desc + "\n")
