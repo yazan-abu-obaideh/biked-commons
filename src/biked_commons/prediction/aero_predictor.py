@@ -26,7 +26,7 @@ def calculate_features(X, device="cpu"):
     head_diameter = torch.tensor(0.25, device=device)
     lower_leg_width = torch.tensor(0.12, device=device)
     arm_width = torch.tensor(0.1, device=device)
-    upper_leg_width = torch.tensor((torso_width/2 - 0.16)/2 + 0.14, device=device)
+    upper_leg_width = (torso_width/2 - 0.16)/2 + 0.14
     neck_width = torch.tensor(0.12, device=device)
 
     head_surface_area = head_diameter * head_diameter * math.pi/4 *torch.ones_like(neck_and_head_length) # surface area of the head
