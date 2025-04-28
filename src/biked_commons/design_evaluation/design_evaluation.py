@@ -131,6 +131,7 @@ class StructuralEvaluator(EvaluationFunction):
         framed_tensor = framed_tensor.to(self.device, dtype=self.dtype)
         framed_tensor = self.preprocessor(framed_tensor)
         predictions = self.model(framed_tensor)
+        predictions = torch.clip(predictions, min=0)
         predictions[:, 4:6] = 1.5 - predictions[:, 4:6]
         return predictions
 

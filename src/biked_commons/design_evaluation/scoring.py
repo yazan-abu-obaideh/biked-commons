@@ -160,7 +160,7 @@ class MinimumObjective(ScoringFunction):
         valid_objective_scores = objective_scores[validity_mask]
         if valid_objective_scores.size == 0:
             return np.ones_like(objective_scores[0]) * ref_point
-        valid_subset = valid_objective_scores[:, validity_mask]
+        valid_subset = valid_objective_scores[validity_mask, :]
         minscores = np.min(valid_subset, axis=0)
         return minscores
     
@@ -177,7 +177,7 @@ class MeanObjective(ScoringFunction):
         valid_objective_scores = objective_scores[validity_mask]
         if valid_objective_scores.size == 0:
             return np.ones_like(objective_scores[0]) * ref_point
-        valid_subset = valid_objective_scores[:, validity_mask]
+        valid_subset = valid_objective_scores[validity_mask, :]
         meanscores = np.mean(valid_subset, axis=0)
         return meanscores
     
