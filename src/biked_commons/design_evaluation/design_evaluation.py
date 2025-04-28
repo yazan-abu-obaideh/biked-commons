@@ -70,8 +70,9 @@ class AeroEvaluator(EvaluationFunction):
         int_pts = interface_points.calculate_interface_points(designs)
         assert "Rider" in conditioning, "Rider dimensions must be provided in conditioning to calculate aerodynamics."
         rider_dims = conditioning["Rider"]
-        if rider_dims.shape[0] == 1:
-            rider_dims = rider_dims.expand(designs.shape[0], -1)
+        #if rider_dims is a 1D tensor, expand it to match the batch size of designs
+        if rider_dims.dim() == 1:
+            rider_dims = rider_dims.unsqueeze(0).expand(designs.shape[0], -1)
         combinations = torch.cat((int_pts, rider_dims), dim=1)
         combinations = combinations.to(self.device, dtype=self.dtype)
         combinations = self.preprocessor(combinations)
@@ -269,8 +270,8 @@ class ErgonomicsEvaluator(EvaluationFunction):
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         assert "Rider" in conditioning, "Rider dimensions must be provided in conditioning to calculate ergonomics."
         rider_dims = conditioning["Rider"]
-        if rider_dims.shape[0] == 1:
-            rider_dims = rider_dims.expand(designs.shape[0], -1)
+        if rider_dims.dim() == 1:
+            rider_dims = rider_dims.unsqueeze(0).expand(designs.shape[0], -1)
 
         assert "Use Case" in conditioning, "Use Case must be provided in conditioning to calculate ergonomics."
         use_case = conditioning["Use Case"]
@@ -314,7 +315,6 @@ class ErgonomicsEvaluator(EvaluationFunction):
         use_case_list = [index_to_label[idx] for idx in use_case.argmax(axis=1)]
 
         int_pts = interface_points.calculate_interface_points(designs)
-
         predictions = joint_angles.dist_to_1SD(int_pts, rider_dims, use_case_list)
         return predictions
 

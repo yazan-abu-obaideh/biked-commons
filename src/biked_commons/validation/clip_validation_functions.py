@@ -101,6 +101,16 @@ class ChainStayShouldBeGreaterThanWheelRadius(ValidationFunction):
         CS_textfield, RD = designs[:, :len(self.variable_names())].T
         return (RD/2) - CS_textfield
     
+class ChainStayShouldBeGreaterThanBB(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "Chain stay should be greater than BB"
+
+    def variable_names(self) -> List[str]:
+        return ["CS textfield", "BB textfield"]
+
+    def validate(self, designs: torch.tensor) -> torch.tensor:
+        CS_textfield, BB_textfield = designs[:, :len(self.variable_names())].T
+        return BB_textfield - CS_textfield
 
 class SeatStayShouldBeGreaterThanWheelRadius(ValidationFunction):
     def friendly_name(self) -> str:
@@ -114,11 +124,31 @@ class SeatStayShouldBeGreaterThanWheelRadius(ValidationFunction):
         Seat_angle_rad = (Seat_angle * math.pi) / 180
         x = Seat_tube_length-(BB_textfield/torch.sin(Seat_angle_rad))-Seat_stay_junction0
         y = BB_textfield/torch.tan(Seat_angle_rad)
-        z = torch.sqrt((CS_textfield ** 2)-(BB_textfield ** 2))
+        z = torch.sqrt(torch.clip((CS_textfield ** 2)-(BB_textfield ** 2), min=0))
         h = z-y
         g = torch.sqrt(h**2 + x**2 - 2*h*x*torch.cos(Seat_angle_rad))
         return (RD / 2) - g
     
+class DownTubeMustReachHeadTube(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "Down tube must reach head tube"
+
+    def variable_names(self) -> List[str]:
+        return ["Stack", "Head tube length textfield", "Head tube lower extension2", "Head angle", "DT Length"]
+
+    def validate(self, designs: torch.tensor) -> torch.tensor:
+        Stack, Head_tube_length_textfield, Head_tube_lower_extension2, Head_angle, DT_length = designs[:, :len(self.variable_names())].T
+        # Extract variables from the DataFrame
+        HTL = Head_tube_length_textfield
+        HTLX = Head_tube_lower_extension2
+        HTA = (Head_angle * math.pi) / 180  # Convert degrees to radians
+        DTL = DT_length
+
+        # Calculate DTJY and DTJX
+        DTJY = Stack - (HTL - HTLX) * torch.sin(HTA)
+
+        return DTJY - DTL
+
 class ThePedalShouldntIntersectTheFrontWheel(ValidationFunction):
     def friendly_name(self) -> str:
         return "The pedal shouldn't intersect the front wheel"
@@ -137,7 +167,8 @@ class ThePedalShouldntIntersectTheFrontWheel(ValidationFunction):
 
         # Calculate DTJY and DTJX
         DTJY = Stack - (HTL - HTLX) * torch.sin(HTA)
-        DTJX = torch.sqrt(DTL ** 2 - DTJY ** 2)
+
+        DTJX = torch.sqrt(torch.clip(DTL ** 2 - DTJY ** 2, min=0))
 
         # Calculate FWX and FCD
         FWX = DTJX + (DTJY - BBD) / torch.tan(HTA)
@@ -174,6 +205,7 @@ CLIPS_VALIDATIONS: List[ValidationFunction] = [
     ChainStayLessThanZero(),
     ChainStayShouldBeGreaterThanWheelRadius(),
     SeatStayShouldBeGreaterThanWheelRadius(),
+    DownTubeMustReachHeadTube(),
     ThePedalShouldntIntersectTheFrontWheel(),
     TheCrankShouldntHitTheGroundWhenItIsInItsLowerPosition()
 ]

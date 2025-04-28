@@ -39,7 +39,7 @@ def calculate_interface_points(x, dtype=torch.float32):
     HTA = x[:, 8] * math.pi / 180 # Head tube angle
     DTL = x[:, 9]  # DT Length
     DTJY = stack - (HTL - HTLX) * torch.sin(HTA)
-    DTJX = torch.sqrt(DTL ** 2 - DTJY ** 2)
+    DTJX = torch.sqrt(torch.clip(DTL ** 2 - DTJY ** 2, min=0))
     handlebar_mount_x = DTJX - (HTL - HTLX) * torch.cos(HTA)
     handlebar_mount_y = stack
 
