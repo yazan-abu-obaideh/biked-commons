@@ -203,7 +203,11 @@ class AestheticsEvaluator(EvaluationFunction):
             else:
                 raise TypeError("For Text mode, conditioning must be text or list of texts")
             embed = self.embedding_model.embed_texts(texts)
-
+        elif self.mode == "Embedding":
+            if isinstance(cond, torch.Tensor):
+                embed = cond
+            else:
+                raise TypeError("For Embedding mode, conditioning must be a Tensor ")
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")
 
@@ -409,7 +413,7 @@ StandardEvaluations: List[EvaluationFunction] = [
     UsabilityEvaluator(),
     AeroEvaluator(),
     ErgonomicsEvaluator(),
-    # AestheticsEvaluator(mode="Text", batch_size=64),
+    # AestheticsEvaluator(mode="Embedding", batch_size=64),
     StructuralEvaluator(),
     ValidationEvaluator(),
     FrameValidityEvaluator()

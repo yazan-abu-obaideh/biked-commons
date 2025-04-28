@@ -60,3 +60,21 @@ def sample_text(num_samples, split="test", randomize = False):
 
     
     return sampled_text
+
+def sample_image_embedding(num_samples, split="test", randomize = False):
+    # Sample random riders from the rider data
+    if split == "test":
+        embeddings = np.load(split_datasets_path("CLIP_Y_test_placeholder.npy"))
+    elif split == "train":
+        embeddings = np.load(split_datasets_path("CLIP_Y_train.npy"))
+    else:
+        raise ValueError("Invalid split. Choose 'train' or 'test'.")
+    
+    # Sample random images from the image data
+    if randomize:
+        sampled_images = np.random.choice(embeddings, size=num_samples, replace=True)
+    else:
+        embeddings = np.tile(embeddings, (num_samples // len(embeddings) + 1, 1))
+        sampled_images = embeddings[:num_samples]
+    
+    return torch.tensor(sampled_images, dtype=torch.float32)
