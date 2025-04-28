@@ -527,3 +527,4 @@ def prepare_text_descriptions():
     with open(split_datasets_path("text_descriptions_train.txt"), "w") as f:
         for desc in tqdm(descriptions):
             f.write(desc + "\n")
+

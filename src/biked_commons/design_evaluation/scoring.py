@@ -7,7 +7,7 @@ import pygmo as pg
 from sklearn.preprocessing import StandardScaler
 import os
 from biked_commons.conditioning import conditioning
-from biked_commons.resource_utils import split_datasets_path
+from biked_commons.resource_utils import split_datasets_path, resource_path
 from biked_commons.design_evaluation.design_evaluation import construct_tensor_evaluator, StandardEvaluations, EvaluationFunction
 
 
@@ -29,7 +29,7 @@ def compute_ref_point(ref_scores):
     ref_point = np.max(ref_scores, axis=0)
     return ref_point
 
-def recompute_ref_point(evaluator, objective_names, isobjective):
+def recompute_ref_point(evaluator, objective_names, isobjective, path):
     print("Calculating reference point for scoring functions...")
     data = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0)
     num_data = data.shape[0]
@@ -44,20 +44,21 @@ def recompute_ref_point(evaluator, objective_names, isobjective):
     objective_scores = scores[:, isobjective].detach().numpy()
     ref_point = compute_ref_point(objective_scores)
     df = pd.Series(ref_point, index=objective_names)
-    df.to_csv("obj_ref_point.csv")
+    df.to_csv(path)
     return ref_point
 
 def get_ref_point(evaluator, objective_names, isobjective):
-    if not os.path.exists("obj_ref_point.csv"):
-        ref_point = recompute_ref_point(evaluator, objective_names, isobjective)
+    path = resource_path("misc/obj_ref_point.csv")
+    if not os.path.exists(path):
+        ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
     else:
-        ref_point = pd.read_csv("obj_ref_point.csv", index_col=0).values.flatten()
+        ref_point = pd.read_csv(path, index_col=0).values.flatten()
         if len(ref_point) != len(objective_names):
-            ref_point = recompute_ref_point(evaluator, objective_names, isobjective)
+            ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
         elif not np.all(np.isin(objective_names, ref_point)):
-            ref_point = recompute_ref_point(evaluator, objective_names, isobjective)
+            ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
         elif not np.all(np.isin(ref_point, objective_names)):
-            ref_point = recompute_ref_point(evaluator, objective_names, isobjective)
+            ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
     return ref_point
 
 class Hypervolume(ScoringFunction):
