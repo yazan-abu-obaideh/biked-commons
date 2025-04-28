@@ -19,6 +19,13 @@ def clips_to_cad(df: pd.DataFrame):
         df["Down tube rear dia2"] = df["dtd"]
         df["Down tube front diameter"] = df["dtd"]
         df["Down tube front dia2"] = df["dtd"]
+    if "RDBSD" in df.columns:
+        df["BSD rear"] = df["Wheel diameter rear"] - df["RDBSD"]
+        df["ERD rear"] = df["BSD rear"]
+    if "FDBSD" in df.columns:
+        df["BSD front"] = df["Wheel diameter front"] - df["FDBSD"]
+        df["ERD front"] = df["BSD front"]
+
     for idx in df.index:
         Stack = df.at[idx, "Stack"]
         HTL = df.at[idx, "Head tube length textfield"]
@@ -29,8 +36,10 @@ def clips_to_cad(df: pd.DataFrame):
         DTJY = Stack - (HTL - HTLX) * np.sin(HTA)
         DTJX = np.sqrt(DTL ** 2 - DTJY ** 2)
         FWX = DTJX + (DTJY - BBD) / np.tan(HTA)
+        fork0r = df.at[idx, "FORK0R"]
+        shift = fork0r/np.sin(HTA)
+        FWX = FWX + shift
         FCD = np.sqrt(FWX ** 2 + BBD ** 2)
-        #TODO add fork0R shift for bike_bench dataset
         df.at[idx, "FCD textfield"] = FCD
     df.drop(["DT Length"], axis=1, inplace=True)
     for column in list(df.columns):

@@ -29,28 +29,28 @@ class SeatPostTooShort(ValidationFunction):
         return saddle_height - (seat_tube_length + seatpost_length + 30) 
 
 
-class BsdRearTooSmall(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Bsd rear too small"
+# class BsdRearTooSmall(ValidationFunction):
+#     def friendly_name(self) -> str:
+#         return "Bsd rear too small"
 
-    def variable_names(self) -> List[str]:
-        return ["RDBSD", "RDERD"]
+#     def variable_names(self) -> List[str]:
+#         return ["RDBSD", "RDERD"]
 
-    def validate(self, designs: torch.tensor) -> torch.tensor:
-        RDBSD, RDERD = designs[:, :len(self.variable_names())].T
-        return RDBSD - RDERD
+#     def validate(self, designs: torch.tensor) -> torch.tensor:
+#         RDBSD, RDERD = designs[:, :len(self.variable_names())].T
+#         return RDBSD - RDERD
 
 
-class BsdFrontTooSmall(ValidationFunction):
-    def friendly_name(self) -> str:
-        return "Bsd front too small"
+# class BsdFrontTooSmall(ValidationFunction):
+#     def friendly_name(self) -> str:
+#         return "Bsd front too small"
 
-    def variable_names(self) -> List[str]:
-        return ["FDBSD", "FDERD"]
+#     def variable_names(self) -> List[str]:
+#         return ["FDBSD", "FDERD"]
 
-    def validate(self, designs: torch.tensor) -> torch.tensor:
-        FDBSD, FDERD = designs[:, :len(self.variable_names())].T
-        return FDBSD - FDERD
+#     def validate(self, designs: torch.tensor) -> torch.tensor:
+#         FDBSD, FDERD = designs[:, :len(self.variable_names())].T
+#         return FDBSD - FDERD
 
 
 class HeadTubeLowerExtensionTooGreat(ValidationFunction):
@@ -167,8 +167,8 @@ class TheCrankShouldntHitTheGroundWhenItIsInItsLowerPosition(ValidationFunction)
 CLIPS_VALIDATIONS: List[ValidationFunction] = [
     SaddleHeightTooSmall(),
     SeatPostTooShort(),
-    BsdRearTooSmall(),
-    BsdFrontTooSmall(),
+    # BsdRearTooSmall(),
+    # BsdFrontTooSmall(),
     HeadTubeLowerExtensionTooGreat(),
     HeadTubeLengthTooGreat(),
     ChainStayLessThanZero(),
