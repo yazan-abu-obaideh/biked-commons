@@ -77,6 +77,7 @@ class AeroEvaluator(EvaluationFunction):
         combinations = combinations.to(self.device, dtype=self.dtype)
         combinations = self.preprocessor(combinations)
         predictions = self.model(combinations)
+        predictions = torch.clip(predictions, min=0)
         return predictions
 
 class FrameValidityEvaluator(EvaluationFunction):

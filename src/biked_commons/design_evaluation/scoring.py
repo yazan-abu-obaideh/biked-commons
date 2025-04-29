@@ -44,7 +44,7 @@ def recompute_ref_point(evaluator, objective_names, isobjective, path):
     objective_scores = scores[:, isobjective].detach().numpy()
     ref_point = compute_ref_point(objective_scores)
     df = pd.Series(ref_point, index=objective_names)
-    df.to_csv(path)
+    df.to_csv(path, header=False)
     return ref_point
 
 def get_ref_point(evaluator, objective_names, isobjective):
@@ -52,12 +52,12 @@ def get_ref_point(evaluator, objective_names, isobjective):
     if not os.path.exists(path):
         ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
     else:
-        ref_point = pd.read_csv(path, index_col=0).values.flatten()
+        ref_point_df = pd.read_csv(path, index_col=0, header=None)
+        ref_point_columns = ref_point_df.index.values
+        ref_point = ref_point_df.values.flatten()
         if len(ref_point) != len(objective_names):
             ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
-        elif not np.all(np.isin(objective_names, ref_point)):
-            ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
-        elif not np.all(np.isin(ref_point, objective_names)):
+        elif np.array_equal(ref_point_columns, objective_names) == False:
             ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
     return ref_point
 
