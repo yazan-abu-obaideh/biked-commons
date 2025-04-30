@@ -113,7 +113,6 @@ class MultiThreadedBikeCadServerManager(ServerManager):
         selected_port = self._port_range[self._request_count % n_servers]  # modulo for safety
 
         self._update_request_count(n_servers)
-
         return self._endpoint(
             selected_port,
             suffix

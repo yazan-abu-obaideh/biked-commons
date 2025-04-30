@@ -12,6 +12,7 @@ FILE_BUILDER = BikeCadFileBuilder()
 @attrs.define(frozen=True)
 class RenderingResult:
     image_bytes: bytes
+    xml_file: str
 
 
 @attrs.define(frozen=True)
@@ -33,15 +34,15 @@ class RenderingEngine:
         self._rendering_client = self._init_rendering_client(number_rendering_servers, server_init_timeout_seconds)
 
     def render_xml(self, bike_xml: str) -> RenderingResult:
-        return RenderingResult(image_bytes=(self._render(bike_xml)))
+        return RenderingResult(image_bytes=(self._render(bike_xml)), xml_file=bike_xml)
 
     def render_biked(self, biked: dict, rider_description: RiderArguments = NO_RIDER) -> RenderingResult:
         xml = FILE_BUILDER.build_cad_from_biked(biked, self.standard_bike_xml, rider_description.show_rider)
-        return RenderingResult(image_bytes=(self._render(xml)))
+        return RenderingResult(image_bytes=(self._render(xml)), xml_file=xml)
 
     def render_clip(self, clip: dict, rider_description: RiderArguments = NO_RIDER) -> RenderingResult:
         xml = FILE_BUILDER.build_cad_from_clip(clip, self.standard_bike_xml, rider_description.show_rider)
-        return RenderingResult(image_bytes=(self._render(xml)))
+        return RenderingResult(image_bytes=(self._render(xml)), xml_file=xml)
 
     def _render(self, xml: str) -> bytes:
         return self._rendering_client.render(xml)
