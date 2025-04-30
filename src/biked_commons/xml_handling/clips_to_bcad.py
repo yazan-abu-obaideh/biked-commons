@@ -32,14 +32,17 @@ def clips_to_cad(df: pd.DataFrame):
         HTLX = df.at[idx, "Head tube lower extension2"]
         HTA = df.at[idx, "Head angle"] * np.pi / 180
         BBD = df.at[idx, "BB textfield"]
+        WDR = df.at[idx, "Wheel diameter rear"]
+        WDF = df.at[idx, "Wheel diameter front"]
+        FBBD = BBD - WDR / 2 + WDF / 2
         DTL = df.at[idx, "DT Length"]
         DTJY = Stack - (HTL - HTLX) * np.sin(HTA)
         DTJX = np.sqrt(DTL ** 2 - DTJY ** 2)
-        FWX = DTJX + (DTJY - BBD) / np.tan(HTA)
+        FWX = DTJX + (DTJY - FBBD) / np.tan(HTA)
         fork0r = df.at[idx, "FORK0R"]
         shift = fork0r/np.sin(HTA)
         FWX = FWX + shift
-        FCD = np.sqrt(FWX ** 2 + BBD ** 2)
+        FCD = np.sqrt(FWX ** 2 + FBBD ** 2)
         df.at[idx, "FCD textfield"] = FCD
     df.drop(["DT Length"], axis=1, inplace=True)
     for column in list(df.columns):

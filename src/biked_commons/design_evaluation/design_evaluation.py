@@ -349,7 +349,8 @@ class UsabilityEvaluator(EvaluationFunction):
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         if self.target_type == 'cont':
-            return self.model.predict(designs.to(self.device, dtype=self.dtype))
+            preds = self.model.predict(designs.to(self.device, dtype=self.dtype))
+            return torch.clip(preds, min=0, max=1)
         elif self.target_type == 'binary':
             x_input = designs.detach().cpu().numpy()
             predictions = self.model.predict(x_input)

@@ -154,15 +154,16 @@ class ThePedalShouldntIntersectTheFrontWheel(ValidationFunction):
         return "The pedal shouldn't intersect the front wheel"
 
     def variable_names(self) -> List[str]:
-        return ["Stack", "Head tube length textfield", "Head tube lower extension2", "Head angle", "BB textfield", "DT Length", "FORK0R", "Wheel diameter front"]
+        return ["Stack", "Head tube length textfield", "Head tube lower extension2", "Head angle", "BB textfield", "DT Length", "FORK0R", "Wheel diameter rear", "Wheel diameter front"]
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
-        Stack, Head_tube_length_textfield, Head_tube_lower_extension2, Head_angle, BB_textfield, DT_length, fork0r, FD = designs[:, :len(self.variable_names())].T
+        Stack, Head_tube_length_textfield, Head_tube_lower_extension2, Head_angle, BB_textfield, DT_length, fork0r, WDR, WDF = designs[:, :len(self.variable_names())].T
         # Extract variables from the DataFrame
         HTL = Head_tube_length_textfield
         HTLX = Head_tube_lower_extension2
         HTA = (Head_angle * math.pi) / 180  # Convert degrees to radians
         BBD = BB_textfield
+        FTY = BBD - WDR / 2 + WDF / 2
         DTL = DT_length
 
         # Calculate DTJY and DTJX
@@ -176,7 +177,7 @@ class ThePedalShouldntIntersectTheFrontWheel(ValidationFunction):
         FWX = FWX + shift
 
         FCD = torch.sqrt(FWX ** 2 + BBD ** 2)
-        wheel_radius = FD/2
+        wheel_radius = WDF/2
         crank_length = 172.5
         return  (crank_length + wheel_radius + 40) - FCD
     
