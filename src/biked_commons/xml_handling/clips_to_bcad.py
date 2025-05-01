@@ -26,6 +26,9 @@ def clips_to_cad(df: pd.DataFrame):
         df["BSD front"] = df["Wheel diameter front"] - df["FDBSD"]
         df["ERD front"] = df["BSD front"]
 
+    #if BELTorCHAIN is True, replace with 1, else 0
+    df["BELTorCHAIN"] = df["BELTorCHAIN"].replace({True: 1, False: 0})
+
     Stack = df["Stack"]
     HTL = df["Head tube length textfield"]
     HTLX = df["Head tube lower extension2"]

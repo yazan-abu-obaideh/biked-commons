@@ -36,6 +36,7 @@ class BikeCadFileBuilder:
         xml_handler = BikeXmlHandler()
         xml_handler.set_xml(seed_bike_xml)
         target_dict = self._to_cad_dict(clip)
+        
         self._update_values(xml_handler, target_dict)
         if show_rider:
             xml_handler.add_or_update("Display RIDER", "true")

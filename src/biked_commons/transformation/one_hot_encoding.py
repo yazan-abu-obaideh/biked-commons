@@ -20,9 +20,11 @@ BOOLEAN_COLUMNS: List[str] = [
     'bottle SEATTUBE0 show',
     'bottle DOWNTUBE0 show',
     'BELTorCHAIN',
-    'SSB_Include',
-    'CSB_Include',
+    'SEATSTAYbrdgCheck',
+    'CHAINSTAYbrdgCheck',
 ]
+
+FAKE_BOOLEAN_COLUMNS: List[str] = ['BELTorCHAIN']
 
 PREFIX_SEP = " OHCLASS: "
 
@@ -84,7 +86,11 @@ def decode_to_mixed(encoded_df: pd.DataFrame) -> pd.DataFrame:
     # 2) round boolean floats back to bool
     for col in BOOLEAN_COLUMNS:
         if col in out.columns:
-            out[col] = out[col].round().astype(int).astype(bool)
+            if col in FAKE_BOOLEAN_COLUMNS:
+                pass
+            else:
+                out[col] = out[col].round().astype(int).astype(bool)
+    
 
     return out
 
