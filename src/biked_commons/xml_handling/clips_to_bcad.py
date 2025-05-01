@@ -26,33 +26,32 @@ def clips_to_cad(df: pd.DataFrame):
         df["BSD front"] = df["Wheel diameter front"] - df["FDBSD"]
         df["ERD front"] = df["BSD front"]
 
-    for idx in df.index:
-        Stack = df.at[idx, "Stack"]
-        HTL = df.at[idx, "Head tube length textfield"]
-        HTLX = df.at[idx, "Head tube lower extension2"]
-        HTA = df.at[idx, "Head angle"] * np.pi / 180
-        BBD = df.at[idx, "BB textfield"]
-        WDR = df.at[idx, "Wheel diameter rear"]
-        WDF = df.at[idx, "Wheel diameter front"]
-        FBBD = BBD - WDR / 2 + WDF / 2
-        DTL = df.at[idx, "DT Length"]
-        DTJY = Stack - (HTL - HTLX) * np.sin(HTA)
-        DTJX = np.sqrt(DTL ** 2 - DTJY ** 2)
-        FWX = DTJX + (DTJY - FBBD) / np.tan(HTA)
-        fork0r = df.at[idx, "FORK0R"]
-        shift = fork0r/np.sin(HTA)
-        FWX = FWX + shift
-        FCD = np.sqrt(FWX ** 2 + FBBD ** 2)
-        df.at[idx, "FCD textfield"] = FCD
+    Stack = df["Stack"]
+    HTL = df["Head tube length textfield"]
+    HTLX = df["Head tube lower extension2"]
+    HTA = df["Head angle"] * np.pi / 180
+    BBD = df["BB textfield"]
+    WDR = df["Wheel diameter rear"]
+    WDF = df["Wheel diameter front"]
+    FBBD = BBD - WDR / 2 + WDF / 2
+    DTL = df["DT Length"]
+    DTJY = Stack - (HTL - HTLX) * np.sin(HTA)
+    DTJX = np.sqrt(DTL ** 2 - DTJY ** 2)
+    FWX = DTJX + (DTJY - FBBD) / np.tan(HTA)
+    fork0r = df["FORK0R"]
+    shift = fork0r/np.sin(HTA)
+    FWX = FWX + shift
+    FCD = np.sqrt(FWX ** 2 + FBBD ** 2)
+    df["FCD textfield"] = FCD
+
     df.drop(["DT Length"], axis=1, inplace=True)
-    for column in list(df.columns):
-        if column.endswith("R_RGB"):
-            r = df[column].values
-            g = df[column.replace("R_RGB", "G_RGB")].values
-            b = df[column.replace("R_RGB", "B_RGB")].values
-            df.drop(column, axis=1, inplace=True)
-            df.drop(column.replace("R_RGB", "G_RGB"), axis=1, inplace=True)
-            df.drop(column.replace("R_RGB", "B_RGB"), axis=1, inplace=True)
-            val = r * (2 ** 16) + g * (2 ** 8) + b - (2 ** 24)
-            df[column.replace("R_RGB", "sRGB")] = val
+    
+    r = df["FIRST color R_RGB"].values
+    g = df["FIRST color G_RGB"].values
+    b = df["FIRST color B_RGB"].values
+    df.drop("FIRST color R_RGB", axis=1, inplace=True)
+    df.drop("FIRST color G_RGB", axis=1, inplace=True)
+    df.drop("FIRST color B_RGB", axis=1, inplace=True)
+    val = r * (2 ** 16) + g * (2 ** 8) + b - (2 ** 24)
+    df["FIRST color sRGB"] = val
     return df.copy()
