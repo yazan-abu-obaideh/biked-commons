@@ -1,6 +1,7 @@
 import pandas as pd
 
 from biked_commons.rendering.one_hot_clips import ONE_HOT_ENCODED_CLIPS_COLUMNS
+from biked_commons.transformation.one_hot_encoding import decode_to_mixed
 from biked_commons.xml_handling.bike_xml_handler import BikeXmlHandler
 from biked_commons.xml_handling.clips_to_bcad import clips_to_cad
 
@@ -42,10 +43,9 @@ class BikeCadFileBuilder:
 
     def _to_cad_dict(self, bike: dict):
         bike_complete = clips_to_cad(pd.DataFrame.from_records([bike])).iloc[0]
-        decoded_values = self._one_hot_decode(bike_complete)
-        bike_dict = bike_complete.to_dict()
-        bike_dict.update(decoded_values)
-        return self._remove_encoded_values(bike_dict)
+        decoded_values = decode_to_mixed(pd.DataFrame.from_records([bike_complete]))
+        decoded_values = decoded_values.iloc[0].to_dict()
+        return decoded_values
 
     def _update_xml(self, xml_handler, cad_key, desired_value):
         entry = xml_handler.find_entry_by_key(cad_key)
@@ -53,16 +53,6 @@ class BikeCadFileBuilder:
             xml_handler.update_entry_value(entry, str(desired_value))
         else:
             xml_handler.add_new_entry(cad_key, str(desired_value))
-
-    def _remove_encoded_values(self, bike_dict: dict) -> dict:
-        to_delete = []
-        for k, _ in bike_dict.items():
-            for encoded_key in ONE_HOT_ENCODED_CLIPS_COLUMNS:
-                if "OHCLASS" in k and encoded_key in k:
-                    to_delete.append(k)
-        return {
-            k: v for k, v in bike_dict.items() if k not in to_delete
-        }
 
     def _update_values(self, handler, bike_dict):
         num_updated = 0
@@ -91,11 +81,3 @@ class BikeCadFileBuilder:
         if param.lower().title() in ['True', 'False']:
             return param.lower()
         return param
-
-    def _one_hot_decode(self, bike: pd.Series) -> dict:
-        result = {}
-        for encoded_value in ONE_HOT_ENCODED_CLIPS_COLUMNS:
-            for column in bike.index:
-                if encoded_value in column and bike[column] == 1:
-                    result[encoded_value] = column.split('OHCLASS:')[1].strip()
-        return result

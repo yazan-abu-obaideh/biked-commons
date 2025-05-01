@@ -1,9 +1,6 @@
-from typing import Callable
-
+from typing import Callable, List
+import numpy as np
 import pandas as pd
-
-import pandas as pd
-from typing import List
 
 # columns to one‐hot encode
 ONE_HOT_ENCODED_CLIPS_COLUMNS: List[str] = [
@@ -51,7 +48,7 @@ def encode_to_continuous(df: pd.DataFrame) -> pd.DataFrame:
     for col in BOOLEAN_COLUMNS:
         if col in out.columns:
             out[col] = out[col].astype(float)
-
+    out = out.astype(np.float32)
     return out
 
 
