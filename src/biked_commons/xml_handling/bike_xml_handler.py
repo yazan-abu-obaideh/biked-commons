@@ -97,6 +97,10 @@ class BikeXmlHandler:
         else:
             self.add_new_entry(key, value)
 
+    def update_if_exists(self, key, value):
+        if self.key_exists(key):
+            self.update_entry_value(self.find_entry_by_key(key), value)
+
     def key_exists(self, key):
         return key in self.get_all_keys()
 

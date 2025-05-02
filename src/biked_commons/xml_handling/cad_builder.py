@@ -69,7 +69,7 @@ class BikeCadFileBuilder:
         return handled
 
     def _update_value(self, handled, xml_handler, k):
-        xml_handler.add_or_update(k, handled)
+        xml_handler.update_if_exists(k, handled)
 
     def _handle_numeric(self, v):
         if str(v).lower() == 'nan':

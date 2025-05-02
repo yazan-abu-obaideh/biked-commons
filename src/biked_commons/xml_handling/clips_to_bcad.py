@@ -25,7 +25,6 @@ def clips_to_cad(df: pd.DataFrame):
     if "FDBSD" in df.columns:
         df["BSD front"] = df["Wheel diameter front"] - df["FDBSD"]
         df["ERD front"] = df["BSD front"]
-    #TODO add tube thickness logic here
 
     Stack = df["Stack"]
     HTL = df["Head tube length textfield"]
