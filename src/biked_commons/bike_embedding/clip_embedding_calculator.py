@@ -6,6 +6,7 @@ import torch
 from PIL import Image
 from torchvision import transforms
 from transformers import CLIPProcessor, CLIPTokenizerFast, CLIPModel
+from tqdm import trange
 
 
 # _DEVICE = "cuda"
@@ -68,7 +69,7 @@ class ClipEmbeddingCalculator:
         self.batch_size = batch_size
 
         # load processor & model once
-        self.processor = CLIPProcessor.from_pretrained(model_id)
+        self.processor = CLIPProcessor.from_pretrained(model_id, use_fast=True)
         self.model     = CLIPModel.from_pretrained(model_id).to(self.device)
         self.model.eval()
 
