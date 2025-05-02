@@ -10,3 +10,4 @@
 src/biked_commons/rendering/bikes/
 src/resources/datasets/split_datasets/CLIP_X_train.csv
 src/resources/datasets/split_datasets/CLIP_Y_train.npy
+src/resources/bike_bench_rendering
