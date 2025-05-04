@@ -13,10 +13,12 @@ Saddle height too small,620.0
 Seat post too short,852.69995
 Head tube lower extension too great,40.0
 Head tube length too great,280.0
-Chain stay less than zero,0.0
+Certain parameters must be positive,838.3
 Chain stay should be greater than wheel radius,368.0
+Chain stay should be greater than BB,0.0
 Seat stay should be greater than wheel radius,99.73651
 Down tube must reach head tube,12.588989
 The pedal shouldn't intersect the front wheel,509.5
-The crank shouldn't hit the ground when it is in its lower position,441.5
+The crank shouldn't hit the ground when it is in its lower position,37.5
+RGB value should be less than 255,0.0
 Predicted Frame Validity,-0.5

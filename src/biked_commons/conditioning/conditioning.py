@@ -72,7 +72,8 @@ def sample_image_embedding(num_samples, split="test", randomize = False):
     
     # Sample random images from the image data
     if randomize:
-        sampled_images = np.random.choice(embeddings, size=num_samples, replace=True)
+        sampled_indices = np.random.choice(len(embeddings), size=num_samples, replace=True)
+        sampled_images = embeddings[sampled_indices]
     else:
         embeddings = np.tile(embeddings, (num_samples // len(embeddings) + 1, 1))
         sampled_images = embeddings[:num_samples]
