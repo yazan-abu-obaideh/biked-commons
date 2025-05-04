@@ -3,7 +3,24 @@ import torch
 import math
 from biked_commons.validation.base_validation_function import ValidationFunction
 
-
+POSITIVE_COLS = ['CS textfield', 'Stack', 'Head angle',
+       'Head tube length textfield', 'Seat stay junction0', 'Seat tube length',
+       'Seat angle', 'DT Length', 'FORK0R', 'BB diameter', 'ttd', 'dtd', 'csd',
+       'ssd', 'Chain stay position on BB', 'SSTopZOFFSET',
+       'Head tube upper extension2', 'Seat tube extension2',
+       'Head tube lower extension2', 'SEATSTAYbrdgshift', 'CHAINSTAYbrdgshift',
+       'SEATSTAYbrdgdia1', 'CHAINSTAYbrdgdia1', 'Dropout spacing',
+       'Wall thickness Bottom Bracket', 'Wall thickness Top tube',
+       'Wall thickness Head tube', 'Wall thickness Down tube',
+       'Wall thickness Chain stay', 'Wall thickness Seat stay',
+       'Wall thickness Seat tube', 'Wheel diameter front', 'RDBSD',
+       'Wheel diameter rear', 'FDBSD', 'BB length',
+       'Head tube diameter', 'Wheel cut', 'Seat tube diameter', 'Number of cogs',
+       'Number of chainrings', 'FIRST color R_RGB',
+       'FIRST color G_RGB', 'FIRST color B_RGB', 'SPOKES composite front',
+       'SPOKES composite rear', 'SBLADEW front', 'SBLADEW rear',
+       'Saddle length', 'Saddle height', 'Down tube diameter',
+       'Seatpost LENGTH']
 
 class SaddleHeightTooSmall(ValidationFunction):
     def friendly_name(self) -> str:
@@ -78,19 +95,20 @@ class HeadTubeLengthTooGreat(ValidationFunction):
         return (head_tube_upper_extension + head_tube_lower_extension) - head_tube_length
 
 
-class ChainStayLessThanZero(ValidationFunction):
+class PositiveValueNegative(ValidationFunction):
     def friendly_name(self) -> str:
-        return "Chain stay less than zero"
+        return "Certain parameters must be positive"
 
     def variable_names(self) -> List[str]:
-        return ["CS textfield"]
+        return POSITIVE_COLS
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
-        cs_textfield, = designs[:, :len(self.variable_names())].T
-        return 0 - cs_textfield
+        all_clipped = torch.clip(-designs, min=0)    
+        sum = torch.sum(all_clipped, dim=1)
+        return sum
 
 
-class ChainStayShouldBeGreaterThanWheelRadius(ValidationFunction):
+class ChainStayShouldSmallerThanWheelRadius(ValidationFunction):
     def friendly_name(self) -> str:
         return "Chain stay should be greater than wheel radius"
 
@@ -101,7 +119,7 @@ class ChainStayShouldBeGreaterThanWheelRadius(ValidationFunction):
         CS_textfield, RD = designs[:, :len(self.variable_names())].T
         return (RD/2) - CS_textfield
     
-class ChainStayShouldBeGreaterThanBB(ValidationFunction):
+class ChainStaySmallerThanBB(ValidationFunction):
     def friendly_name(self) -> str:
         return "Chain stay should be greater than BB"
 
@@ -112,7 +130,7 @@ class ChainStayShouldBeGreaterThanBB(ValidationFunction):
         CS_textfield, BB_textfield = designs[:, :len(self.variable_names())].T
         return BB_textfield - CS_textfield
 
-class SeatStayShouldBeGreaterThanWheelRadius(ValidationFunction):
+class SeatStaySmallerThanWheelRadius(ValidationFunction):
     def friendly_name(self) -> str:
         return "Seat stay should be greater than wheel radius"
 
@@ -129,7 +147,7 @@ class SeatStayShouldBeGreaterThanWheelRadius(ValidationFunction):
         g = torch.sqrt(h**2 + x**2 - 2*h*x*torch.cos(Seat_angle_rad))
         return (RD / 2) - g
     
-class DownTubeMustReachHeadTube(ValidationFunction):
+class DownTubeCantReachHeadTube(ValidationFunction):
     def friendly_name(self) -> str:
         return "Down tube must reach head tube"
 
@@ -149,7 +167,7 @@ class DownTubeMustReachHeadTube(ValidationFunction):
 
         return DTJY - DTL
 
-class ThePedalShouldntIntersectTheFrontWheel(ValidationFunction):
+class PedalIntersectsFrontWheel(ValidationFunction):
     def friendly_name(self) -> str:
         return "The pedal shouldn't intersect the front wheel"
 
@@ -181,19 +199,33 @@ class ThePedalShouldntIntersectTheFrontWheel(ValidationFunction):
         crank_length = 172.5
         return  (crank_length + wheel_radius + 40) - FCD
     
-class TheCrankShouldntHitTheGroundWhenItIsInItsLowerPosition(ValidationFunction):
+class CrankHitsGroundInLowestPosition(ValidationFunction):
     def friendly_name(self) -> str:
         return "The crank shouldn't hit the ground when it is in its lower position"
 
     def variable_names(self) -> List[str]:
-        return ["BB textfield"]
+        return ["BB textfield", "Wheel diameter rear"]
 
     def validate(self, designs: torch.tensor) -> torch.tensor:
-        BB_textfield = designs[:, :len(self.variable_names())].T
+        BB_textfield, WDR = designs[:, :len(self.variable_names())].T
         # Extract variables from the DataFrame
-        wheel_radius = 674/2
+        wheel_radius = WDR / 2
         crank_length = 172.5
         return  (crank_length + BB_textfield) - wheel_radius
+
+class RGBvalueGreaterThan255(ValidationFunction):
+    def friendly_name(self) -> str:
+        return "RGB value should be less than 255"
+
+    def variable_names(self) -> List[str]:
+        return ["FIRST color R_RGB", "FIRST color G_RGB", "FIRST color B_RGB"]
+
+    def validate(self, designs: torch.tensor) -> torch.tensor:
+        color_overflow = designs - 255
+        overflow_clipped = torch.clip(color_overflow, min=0)
+        return torch.sum(overflow_clipped, dim=1)
+
+
 
 
 CLIPS_VALIDATIONS: List[ValidationFunction] = [
@@ -203,10 +235,12 @@ CLIPS_VALIDATIONS: List[ValidationFunction] = [
     # BsdFrontTooSmall(),
     HeadTubeLowerExtensionTooGreat(),
     HeadTubeLengthTooGreat(),
-    ChainStayLessThanZero(),
-    ChainStayShouldBeGreaterThanWheelRadius(),
-    SeatStayShouldBeGreaterThanWheelRadius(),
-    DownTubeMustReachHeadTube(),
-    ThePedalShouldntIntersectTheFrontWheel(),
-    TheCrankShouldntHitTheGroundWhenItIsInItsLowerPosition()
+    PositiveValueNegative(),
+    ChainStayShouldSmallerThanWheelRadius(),
+    ChainStaySmallerThanBB(),
+    SeatStaySmallerThanWheelRadius(),
+    DownTubeCantReachHeadTube(),
+    PedalIntersectsFrontWheel(),
+    CrankHitsGroundInLowestPosition(),
+    RGBvalueGreaterThan255()
 ]

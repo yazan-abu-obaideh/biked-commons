@@ -49,6 +49,11 @@ def clips_to_cad(df: pd.DataFrame):
     r = df["FIRST color R_RGB"].values
     g = df["FIRST color G_RGB"].values
     b = df["FIRST color B_RGB"].values
+    
+    r = np.round(r).astype(int)
+    g = np.round(g).astype(int)
+    b = np.round(b).astype(int)
+
     df.drop("FIRST color R_RGB", axis=1, inplace=True)
     df.drop("FIRST color G_RGB", axis=1, inplace=True)
     df.drop("FIRST color B_RGB", axis=1, inplace=True)

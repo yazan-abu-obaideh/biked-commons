@@ -29,7 +29,7 @@ def compute_ref_point(ref_scores):
     ref_point = np.max(ref_scores, axis=0)
     return ref_point
 
-def recompute_ref_point(evaluator, objective_names, isobjective, path):
+def recompute_ref_point(evaluator, objective_names, path):
     print("Calculating reference point for scoring functions...")
     data = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0)
     num_data = data.shape[0]
@@ -40,25 +40,24 @@ def recompute_ref_point(evaluator, objective_names, isobjective, path):
     condition = {"Rider": rider_condition, "Use Case": use_case_condition, "Text": text_condition}
 
     scores = evaluator(torch.tensor(data.values, dtype=torch.float32), condition)
-    objective_scores = scores[:, isobjective]
-    objective_scores = scores[:, isobjective].detach().numpy()
+    objective_scores = scores.detach().numpy()
     ref_point = compute_ref_point(objective_scores)
     df = pd.Series(ref_point, index=objective_names)
     df.to_csv(path, header=False)
-    return ref_point
+    return df
 
-def get_ref_point(evaluator, objective_names, isobjective):
-    path = resource_path("misc/obj_ref_point.csv")
+def get_ref_point(evaluator, objective_names):
+    path = resource_path("misc/ref_point.csv")
     if not os.path.exists(path):
-        ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
+        ref_point_df = recompute_ref_point(evaluator, objective_names, path)
     else:
         ref_point_df = pd.read_csv(path, index_col=0, header=None)
         ref_point_columns = ref_point_df.index.values
-        ref_point = ref_point_df.values.flatten()
-        if len(ref_point) != len(objective_names):
-            ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
-        elif np.array_equal(ref_point_columns, objective_names) == False:
-            ref_point = recompute_ref_point(evaluator, objective_names, isobjective, path)
+        if not np.all(np.isin(objective_names, ref_point_columns)):
+            print("Reference point does not include all objective names. Recomputing...")
+            ref_point_df = recompute_ref_point(evaluator, objective_names, path)
+    ref_point_df = ref_point_df.loc[objective_names]
+    ref_point = ref_point_df.values.flatten()
     return ref_point
 
 class Hypervolume(ScoringFunction):
@@ -68,17 +67,16 @@ class Hypervolume(ScoringFunction):
     def return_names(self) -> List[str]:
         return ["Hypervolume"]
 
-    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
-        #if ref_point exists, use it, otherwise compute it
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point):
         
         validity_mask = np.all(constraint_scores <= 0, axis=1)
         valid_objective_scores = objective_scores[validity_mask]
         if valid_objective_scores.size == 0:
             return 0.0
         valid_objective_scores[np.isnan(valid_objective_scores)] = float("inf")
-        valid_objective_scores = valid_objective_scores/ref_point
+        valid_objective_scores = valid_objective_scores/obj_ref_point
         valid_objective_scores = np.clip(valid_objective_scores, a_min=0, a_max=1)
-        scaled_ref_point = np.ones_like(ref_point)
+        scaled_ref_point = np.ones_like(obj_ref_point)
 
         hv = pg.hypervolume(valid_objective_scores)
         hv_value = hv.compute(ref_point=scaled_ref_point)
@@ -91,7 +89,7 @@ class ConstraintSatisfactionRate(ScoringFunction):
     def return_names(self) -> List[str]:
         return ["Constraint Satisfaction Rate"]
     
-    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point):
         return np.mean(constraint_scores <=0)
 
 
@@ -143,7 +141,7 @@ class MMD(ScoringFunction):
         n, m = gen.shape[0], ref.shape[0]
         return (K_GG / (n * n)) + (K_RR / (m * m)) - (2 * K_GR / (n * m))
 
-    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point):
         scaled_designs = self.scaler.transform(designs)
         return self.mmd(scaled_designs, self.reference_designs)
     
@@ -155,12 +153,12 @@ class MinimumObjective(ScoringFunction):
     def return_names(self) -> List[str]:
         return self.names
 
-    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point):
         self.names = [f"Min Objective Score: {name}" for name in objective_names]
         validity_mask = np.all(constraint_scores <= 0, axis=1)
         valid_objective_scores = objective_scores[validity_mask]
         if valid_objective_scores.size == 0:
-            return np.ones_like(objective_scores[0]) * ref_point
+            return np.ones_like(objective_scores[0]) * obj_ref_point
         valid_subset = valid_objective_scores[validity_mask, :]
         minscores = np.min(valid_subset, axis=0)
         return minscores
@@ -172,12 +170,12 @@ class MeanObjective(ScoringFunction):
     def return_names(self) -> List[str]:
         return self.names
 
-    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point):
         self.names = [f"Mean Objective Score: {name}" for name in objective_names]
         validity_mask = np.all(constraint_scores <= 0, axis=1)
         valid_objective_scores = objective_scores[validity_mask]
         if valid_objective_scores.size == 0:
-            return np.ones_like(objective_scores[0]) * ref_point
+            return np.ones_like(objective_scores[0]) * obj_ref_point
         valid_subset = valid_objective_scores[validity_mask, :]
         meanscores = np.mean(valid_subset, axis=0)
         return meanscores
@@ -189,7 +187,7 @@ class ConstraintViolationRate(ScoringFunction):
     def return_names(self) -> List[str]:
         return self.names
 
-    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point):
         self.names = [f"Constraint Violation Rate: {name}" for name in constraint_names]
         validity_boolean = constraint_scores > 0
         return np.mean(validity_boolean, axis=0)
@@ -201,7 +199,7 @@ class MeanConstraintViolationMagnitude(ScoringFunction):
     def return_names(self) -> List[str]:
         return self.names
 
-    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point):
+    def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point):
         self.names = [f"Mean Constraint Violation Magnitude: {name}" for name in constraint_names]
         constraint_scores = np.clip(constraint_scores, a_min=0, a_max=None)
         meanscores = np.mean(constraint_scores, axis=0)
@@ -215,19 +213,18 @@ def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functi
     objective_names = requirement_names[isobjective]
     constraint_names = requirement_names[~isobjective]
 
-    ref_point = get_ref_point(evaluator, objective_names, isobjective) #1D numpy array
-
+    obj_ref_point = get_ref_point(evaluator, objective_names) #1D numpy array
     def scorer(designs: torch.Tensor, condition: dict = {}) -> pd.Series:
         score_names = []
         scores = []
         evaluation_scores = evaluator(designs, condition)
         objective_scores = evaluation_scores[:, isobjective].detach().numpy()
-        ref_point_exp = np.expand_dims(ref_point, axis=0)
+        ref_point_exp = np.expand_dims(obj_ref_point, axis=0)
         ref_point_exp = np.repeat(ref_point_exp, objective_scores.shape[0], axis=0)
         objective_scores[np.isnan(objective_scores)] = ref_point_exp[np.isnan(objective_scores)]
         constraint_scores = evaluation_scores[:, ~isobjective].detach().numpy()
         for scoring_function in scoring_functions:
-            raw = scoring_function.evaluate(designs, objective_scores, constraint_scores, objective_names, constraint_names, ref_point)
+            raw = scoring_function.evaluate(designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point)
 
             arr = np.atleast_1d(raw)
 
