@@ -16,6 +16,7 @@ from PIL import Image
 import numpy as np
 import torch
 import shutil
+import uuid
 
 
 
@@ -78,8 +79,13 @@ def sample_n(n=4096):
     samples_df = pd.DataFrame(all_valid_samples.numpy(), columns=COLUMN_NAMES)
     return samples_df
 
-def sample_n_records(n=4096):
+def sample_save_n_records(save_path, n=4096):
     data = sample_n(n)
+    #make the data indices random keys using uuid
+    random_keys = [str(uuid.uuid4()) for _ in range(len(data))]
+    data.index = random_keys
+    #save csv to save_path
+    data.to_csv(save_path)
     return {str(record_id): record for record_id, record in zip(data.index.tolist(), data.to_dict(orient="records"))}
 
 def bike_to_xml(save_path: str, record_id: str, record: dict):
