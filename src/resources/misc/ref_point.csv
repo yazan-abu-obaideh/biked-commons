@@ -4,10 +4,10 @@ Knee Angle Error,197.29372
 Hip Angle Error,805.29553
 Arm Angle Error,842.15967
 Cosine Similarity to Embedding,0.286874
-Mass,5.6186323
-Planar Compliance,2071.5378
-Transverse Compliance,2859.3362
-Eccentric Compliance,1938.3656
+Mass,14.987815
+Planar Compliance,115.509544
+Transverse Compliance,285.9696
+Eccentric Compliance,131.47289
 Planar Safety Factor,1.5
 Eccentric Safety Factor,1.5
 Saddle height too small,620.0
@@ -22,4 +22,4 @@ Down tube must reach head tube,0.0
 The pedal shouldn't intersect the front wheel,509.5
 The crank shouldn't hit the ground when it is in its lower position,37.5
 RGB value should be less than 255,0.0
-Predicted Frame Validity,-0.5
+Predicted Frame Validity,0.5

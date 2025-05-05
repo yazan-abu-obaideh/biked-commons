@@ -88,7 +88,7 @@ class FrameValidityEvaluator(EvaluationFunction):
         self.model = torch.load(model_path, weights_only=False).to(self.device)
         self.preprocessor = Preprocessor(scaler_path=scaler_path, preprocess_fn=None, device=device)
         
-        self.converter = framed.clip_to_framed_tensor_builder(ordered_columns.ORDERED_COLUMNS, framed.FRAMED_ORDERED_COLUMNS)
+        self.converter = framed.clip_to_framed_tensor_builder(ordered_columns.bike_bench_columns, framed.FRAMED_ORDERED_COLUMNS)
 
     def variable_names(self) -> List[str]:
         return ordered_columns.bike_bench_columns
@@ -116,7 +116,7 @@ class StructuralEvaluator(EvaluationFunction):
         self.model = torch.load(model_path, weights_only=False).to(self.device)
         self.preprocessor = Preprocessor(scaler_path=scaler_path, preprocess_fn=None, device=device)
         
-        self.converter = framed.clip_to_framed_tensor_builder(ordered_columns.ORDERED_COLUMNS, framed.FRAMED_ORDERED_COLUMNS)
+        self.converter = framed.clip_to_framed_tensor_builder(ordered_columns.bike_bench_columns, framed.FRAMED_ORDERED_COLUMNS)
 
     def variable_names(self) -> List[str]:
         return ordered_columns.bike_bench_columns
