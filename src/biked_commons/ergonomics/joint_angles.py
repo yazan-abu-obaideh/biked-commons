@@ -93,7 +93,7 @@ def validity_mask(bikes, bodies, arm_angle):
 ###################################
 # FUNCTIONS FOR CALCUATING ANGLES #
 ###################################
-def knee_extension_angle(bike_vectors, body_vectors, CA, ret_a2=False):
+def knee_extension_angle(bike_vectors, body_vectors, CA, ret_a2=False, eps=1e-6):
     """
     Input:
         bike vector, body vector, crank angle, OPTIONAL return a2
@@ -146,7 +146,7 @@ def knee_extension_angle(bike_vectors, body_vectors, CA, ret_a2=False):
     LY = SY - CL * torch.sin(CA)
     x_2 = torch.sqrt(LX ** 2 + LY ** 2)
 
-    alpha_1 = torch.arccos(torch.clamp((x_1 ** 2 - UL_s - x_2 ** 2) / (-2 * UL * x_2), -1.0, 1.0))
+    alpha_1 = torch.arccos(torch.clamp((x_1 ** 2 - UL_s - x_2 ** 2) / (-2 * UL * x_2), -1.0 + eps, 1.0 - eps))
     alpha_2 = torch.atan2(LY, LX) - alpha_1
     if ret_a2:
         return alpha_2
@@ -155,14 +155,14 @@ def knee_extension_angle(bike_vectors, body_vectors, CA, ret_a2=False):
     LLX = LX - UL * torch.cos(alpha_2)
 
     alpha_3 = torch.atan2(LLY, LLX) - alpha_2
-    alpha_4 = torch.arccos(torch.clamp((FL_s - LL_s - x_1 ** 2) / (-2 * LL * x_1), -1.0, 1.0))
+    alpha_4 = torch.arccos(torch.clamp((FL_s - LL_s - x_1 ** 2) / (-2 * LL * x_1), -1.0 + eps, 1.0 - eps))
 
     return (alpha_3 + alpha_4) * (180 / torch.pi)
 
 def law_of_cosines(a, b, c):
     return (a**2 + b**2 - c**2) / (2 * a * b)
 
-def back_armpit_angles(bike_vectors, body_vectors):
+def back_armpit_angles(bike_vectors, body_vectors, eps=1e-6):
     """
     Input: bike_vector, body_vector, elbow_angle in degrees
     Output: back angle, armpit to elbow angle, armpit to wrist angle in degrees
@@ -197,11 +197,11 @@ def back_armpit_angles(bike_vectors, body_vectors):
 
     tors_angle_cos = law_of_cosines(sth_dist, TL, shoulder_to_hand)
 
-    tors_angle_clamped = torch.clamp(tors_angle_cos, -1.0, 1.0)
+    tors_angle_clamped = torch.clamp(tors_angle_cos, -1.0 + eps, 1.0 - eps)
     tors_ang = torch.arccos(tors_angle_clamped)
 
     shoulder_angle_cos = law_of_cosines(shoulder_to_hand, TL, sth_dist)
-    shoulder_angle_clamped = torch.clamp(shoulder_angle_cos, -1.0, 1.0)
+    shoulder_angle_clamped = torch.clamp(shoulder_angle_cos, -1.0 + eps, 1.0 - eps)
     shoulder_ang = torch.arccos(shoulder_angle_clamped)
 
     #if less than one set angle to 180 degrees and add shoulder_to_hand - sth_dist - TL to give gradient

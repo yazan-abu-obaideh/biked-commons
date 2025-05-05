@@ -8,7 +8,7 @@ from biked_commons.resource_utils import resource_path
 
 def load_usability(target_type: str):
     if target_type == 'cont':
-        X_train = pd.read_csv(resource_path('datasets/split_datasets/usability_cont_norm_X_train.csv'), index_col=0)
+        X_train = pd.read_csv(resource_path('datasets/split_datasets/usability_cont_X_train.csv'), index_col=0)
         Y_train = pd.read_csv(resource_path('datasets/split_datasets/usability_cont_Y_train.csv'), index_col=0)
     elif target_type == 'binary':
         X_train = pd.read_csv(resource_path('datasets/split_datasets/usability_binary_X_train.csv'), index_col=0)

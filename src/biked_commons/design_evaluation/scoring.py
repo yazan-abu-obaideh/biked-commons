@@ -24,12 +24,15 @@ class ScoringFunction(ABC):
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         pass
 
-def compute_ref_point(ref_scores):
+def compute_ref_point(ref_scores, reduction):
     ref_scores[np.isnan(ref_scores)] = -float("inf")
-    ref_point = np.max(ref_scores, axis=0)
+    if reduction == "max":
+        ref_point = np.max(ref_scores, axis=0)
+    elif reduction == "meanabs":
+        ref_point = np.mean(np.abs(ref_scores), axis=0)
     return ref_point
 
-def recompute_ref_point(evaluator, eval_names, path):
+def recompute_ref_point(evaluator, eval_names, path, reduction):
     print("Calculating reference point for scoring functions...")
     data = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0)
     num_data = data.shape[0]
@@ -41,21 +44,26 @@ def recompute_ref_point(evaluator, eval_names, path):
 
     scores = evaluator(torch.tensor(data.values, dtype=torch.float32), condition)
     objective_scores = scores.detach().numpy()
-    ref_point = compute_ref_point(objective_scores)
+    ref_point = compute_ref_point(objective_scores, reduction)
     df = pd.Series(ref_point, index=eval_names)
     df.to_csv(path, header=False)
     return df
 
-def get_ref_point(evaluator, objective_names, eval_names):
-    path = resource_path("misc/ref_point.csv")
+def get_ref_point(evaluator, objective_names, eval_names, reduction = "max"):
+    if reduction=="max":
+        path = resource_path("misc/ref_point.csv")
+    elif reduction=="meanabs":
+        path = resource_path("misc/default_weights.csv")
+    else:
+        raise ValueError("Invalid reduction method. Use 'max' or 'meanabs'.")
     if not os.path.exists(path):
-        ref_point_df = recompute_ref_point(evaluator, eval_names, path)
+        ref_point_df = recompute_ref_point(evaluator, eval_names, path, reduction)
     else:
         ref_point_df = pd.read_csv(path, index_col=0, header=None)
         ref_point_columns = ref_point_df.index.values
         if not np.all(np.isin(objective_names, ref_point_columns)):
             print("Reference point does not include all objective names. Recomputing...")
-            ref_point_df = recompute_ref_point(evaluator, eval_names, path)
+            ref_point_df = recompute_ref_point(evaluator, eval_names, path, reduction)
     ref_point_df = ref_point_df.loc[objective_names]
     ref_point = ref_point_df.values.flatten()
     return ref_point

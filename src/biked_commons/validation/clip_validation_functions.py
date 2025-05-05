@@ -137,12 +137,12 @@ class SeatStaySmallerThanWheelRadius(ValidationFunction):
     def variable_names(self) -> List[str]:
         return ["CS textfield", "BB textfield","Seat tube length", "Seat stay junction0", "Seat angle", "Wheel diameter rear"]
 
-    def validate(self, designs: torch.tensor) -> torch.tensor:
+    def validate(self, designs: torch.tensor, eps = 1e-6) -> torch.tensor:
         CS_textfield, BB_textfield, Seat_tube_length, Seat_stay_junction0, Seat_angle, RD = designs[:, :len(self.variable_names())].T
         Seat_angle_rad = (Seat_angle * math.pi) / 180
         x = Seat_tube_length-(BB_textfield/torch.sin(Seat_angle_rad))-Seat_stay_junction0
         y = BB_textfield/torch.tan(Seat_angle_rad)
-        z = torch.sqrt(torch.clip((CS_textfield ** 2)-(BB_textfield ** 2), min=0))
+        z = torch.sqrt(torch.clip((CS_textfield ** 2)-(BB_textfield ** 2), min=eps))
         h = z-y
         g = torch.sqrt(h**2 + x**2 - 2*h*x*torch.cos(Seat_angle_rad))
         return (RD / 2) - g
@@ -174,7 +174,7 @@ class PedalIntersectsFrontWheel(ValidationFunction):
     def variable_names(self) -> List[str]:
         return ["Stack", "Head tube length textfield", "Head tube lower extension2", "Head angle", "BB textfield", "DT Length", "FORK0R", "Wheel diameter rear", "Wheel diameter front"]
 
-    def validate(self, designs: torch.tensor) -> torch.tensor:
+    def validate(self, designs: torch.tensor, eps=1e-6) -> torch.tensor:
         Stack, Head_tube_length_textfield, Head_tube_lower_extension2, Head_angle, BB_textfield, DT_length, fork0r, WDR, WDF = designs[:, :len(self.variable_names())].T
         # Extract variables from the DataFrame
         HTL = Head_tube_length_textfield
@@ -187,7 +187,7 @@ class PedalIntersectsFrontWheel(ValidationFunction):
         # Calculate DTJY and DTJX
         DTJY = Stack - (HTL - HTLX) * torch.sin(HTA)
 
-        DTJX = torch.sqrt(torch.clip(DTL ** 2 - DTJY ** 2, min=0))
+        DTJX = torch.sqrt(torch.clip(DTL ** 2 - DTJY ** 2, min=eps))
 
         # Calculate FWX and FCD
         FWX = DTJX + (DTJY - BBD) / torch.tan(HTA)
@@ -213,7 +213,7 @@ class CrankHitsGroundInLowestPosition(ValidationFunction):
         crank_length = 172.5
         return  (crank_length + BB_textfield) - wheel_radius
 
-class RGBvalueGreaterThan255(ValidationFunction):
+class RGBvalueGreaterThan255(ValidationFunction): #less than 0 covered in PositiveValueNegative
     def friendly_name(self) -> str:
         return "RGB value should be less than 255"
 
@@ -223,7 +223,10 @@ class RGBvalueGreaterThan255(ValidationFunction):
     def validate(self, designs: torch.tensor) -> torch.tensor:
         color_overflow = designs - 255
         overflow_clipped = torch.clip(color_overflow, min=0)
-        return torch.sum(overflow_clipped, dim=1)
+        total = torch.sum(overflow_clipped, dim=1)
+        #return total if total > 0 else sum of color_overflow (required for calculation of default weights)
+        mask = total > 0
+        return total * mask.float() + color_overflow.sum(dim=1) * (1 - mask.float())
 
 
 

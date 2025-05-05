@@ -19,7 +19,7 @@ def calculate_interace_points_df(df):
     return y
 
 
-def calculate_interface_points(x, dtype=torch.float32):
+def calculate_interface_points(x, dtype=torch.float32, eps=1e-6):
     stack = x[:, 0]
     oh0 = x[:, 1]  # Handlebar style OHCLASS: 0
     oh1 = x[:, 2]  # Handlebar style OHCLASS: 1
@@ -39,7 +39,7 @@ def calculate_interface_points(x, dtype=torch.float32):
     HTA = x[:, 8] * math.pi / 180 # Head tube angle
     DTL = x[:, 9]  # DT Length
     DTJY = stack - (HTL - HTLX) * torch.sin(HTA)
-    DTJX = torch.sqrt(torch.clip(DTL ** 2 - DTJY ** 2, min=0))
+    DTJX = torch.sqrt(torch.clip(DTL ** 2 - DTJY ** 2, min=eps))
     handlebar_mount_x = DTJX - (HTL - HTLX) * torch.cos(HTA)
     handlebar_mount_y = stack
 
@@ -103,4 +103,5 @@ def calculate_interface_points(x, dtype=torch.float32):
     #offsets from shoe thickness (from bikeCAD)
     hip_y = hip_y - 23
     hand_y = hand_y - 23
+
     return y
