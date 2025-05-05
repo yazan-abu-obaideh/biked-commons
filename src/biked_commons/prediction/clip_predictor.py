@@ -7,9 +7,9 @@ from biked_commons.prediction.prediction_utils import TorchStandardScaler
 
 
 def remove_wall_thickness(x, device):
-    # indices_to_drop = [26, 27, 28, 29, 30, 31, 32]
-    first_chunk = x[:, :26]
-    second_chunk = x[:, 33:]
+    # indices_to_drop = [27, 28, 29, 30, 31, 32, 33]
+    first_chunk = x[:, :27]
+    second_chunk = x[:, 34:]
     x = torch.cat((first_chunk, second_chunk), dim=1)
     return x
     
