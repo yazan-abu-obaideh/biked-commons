@@ -64,7 +64,7 @@ def sample_text(num_samples, split="test", randomize = False):
 def sample_image_embedding(num_samples, split="test", randomize = False):
     # Sample random riders from the rider data
     if split == "test":
-        embeddings = np.load(split_datasets_path("CLIP_Y_test_placeholder.npy"))
+        embeddings = np.load(split_datasets_path("CLIP_Y_test.npy"))
     elif split == "train":
         embeddings = np.load(split_datasets_path("CLIP_Y_train.npy"))
     else:

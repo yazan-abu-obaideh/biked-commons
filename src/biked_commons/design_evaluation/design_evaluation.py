@@ -160,13 +160,15 @@ class AestheticsEvaluator(EvaluationFunction):
         )
 
     def variable_names(self) -> List[str]:
-        return ordered_columns.ORDERED_COLUMNS
+        return ordered_columns.bike_bench_columns
 
     def return_names(self) -> List[str]:
         if self.mode in ["Image", "Image Path"]:
             return ["Cosine Similarity to Image"]
         elif self.mode == "Text":
             return ["Cosine Similarity to Text"]
+        elif self.mode == "Embedding":
+            return ["Cosine Similarity to Embedding"]
 
     def return_types(self) -> List[str]:
         return [1]
@@ -416,7 +418,7 @@ StandardEvaluations: List[EvaluationFunction] = [
     UsabilityEvaluator(),
     AeroEvaluator(),
     ErgonomicsEvaluator(),
-    # AestheticsEvaluator(mode="Embedding", batch_size=64),
+    AestheticsEvaluator(mode="Embedding", batch_size=64),
     StructuralEvaluator(),
     ValidationEvaluator(),
     FrameValidityEvaluator()

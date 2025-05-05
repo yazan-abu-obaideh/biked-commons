@@ -29,33 +29,33 @@ def compute_ref_point(ref_scores):
     ref_point = np.max(ref_scores, axis=0)
     return ref_point
 
-def recompute_ref_point(evaluator, objective_names, path):
+def recompute_ref_point(evaluator, eval_names, path):
     print("Calculating reference point for scoring functions...")
     data = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0)
     num_data = data.shape[0]
     rider_condition = conditioning.sample_riders(num_data, split="test")
     use_case_condition = conditioning.sample_use_case(num_data, split="test")
-    text_condition = conditioning.sample_text(num_data, split="test")
+    embedding = conditioning.sample_image_embedding(num_data, split="test")
 
-    condition = {"Rider": rider_condition, "Use Case": use_case_condition, "Text": text_condition}
+    condition = {"Rider": rider_condition, "Use Case": use_case_condition, "Embedding": embedding}
 
     scores = evaluator(torch.tensor(data.values, dtype=torch.float32), condition)
     objective_scores = scores.detach().numpy()
     ref_point = compute_ref_point(objective_scores)
-    df = pd.Series(ref_point, index=objective_names)
+    df = pd.Series(ref_point, index=eval_names)
     df.to_csv(path, header=False)
     return df
 
-def get_ref_point(evaluator, objective_names):
+def get_ref_point(evaluator, objective_names, eval_names):
     path = resource_path("misc/ref_point.csv")
     if not os.path.exists(path):
-        ref_point_df = recompute_ref_point(evaluator, objective_names, path)
+        ref_point_df = recompute_ref_point(evaluator, eval_names, path)
     else:
         ref_point_df = pd.read_csv(path, index_col=0, header=None)
         ref_point_columns = ref_point_df.index.values
         if not np.all(np.isin(objective_names, ref_point_columns)):
             print("Reference point does not include all objective names. Recomputing...")
-            ref_point_df = recompute_ref_point(evaluator, objective_names, path)
+            ref_point_df = recompute_ref_point(evaluator, eval_names, path)
     ref_point_df = ref_point_df.loc[objective_names]
     ref_point = ref_point_df.values.flatten()
     return ref_point
@@ -213,7 +213,7 @@ def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functi
     objective_names = requirement_names[isobjective]
     constraint_names = requirement_names[~isobjective]
 
-    obj_ref_point = get_ref_point(evaluator, objective_names) #1D numpy array
+    obj_ref_point = get_ref_point(evaluator, objective_names, requirement_names) #1D numpy array
     def scorer(designs: torch.Tensor, condition: dict = {}) -> pd.Series:
         score_names = []
         scores = []
