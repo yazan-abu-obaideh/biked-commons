@@ -51,24 +51,25 @@ class Preprocessor(nn.Module):
         return self.scaler(x)
 
     __call__ = forward
-
+    
 class DNN(nn.Module):
-    def __init__(self, input_dim, output_dim=1, classification=False):
+    def __init__(self, input_dim, layer_sizes=[256, 128], output_dim=1, dropout_rate=0.2, classification=False):
         super(DNN, self).__init__()
-        self.fc1 = nn.Linear(input_dim, 256)
-        self.fc2 = nn.Linear(256, 128)
-        self.fc3 = nn.Linear(128, output_dim)
-        self.relu = nn.ReLU()
-        self.dropout = nn.Dropout(0.2)
+        layers = []
+        prev_dim = input_dim
+        for size in layer_sizes:
+            layers.append(nn.Linear(prev_dim, size))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout_rate))
+            prev_dim = size
+        
+        layers.append(nn.Linear(prev_dim, output_dim))
+
+        self.network = nn.Sequential(*layers)
         self.classification = classification
 
     def forward(self, x):
-        x = self.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = self.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = self.fc3(x)
+        x = self.network(x)
         if self.classification:
             x = torch.sigmoid(x)
         return x
-    

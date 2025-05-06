@@ -332,7 +332,10 @@ class UsabilityEvaluator(EvaluationFunction):
         super().__init__(device, dtype)
         self.target_type = target_type
         if target_type == 'cont':
-            self.model = UsabilityPredictorContinuous(device)
+            scaler_path = models_and_scalers_path("usability_scaler.pt")
+            model_path = models_and_scalers_path("usability_model.pt")
+            self.model = torch.load(model_path, weights_only=False).to(self.device)
+            self.preprocessor = Preprocessor(scaler_path=scaler_path, preprocess_fn=None, device=device)
         elif target_type == 'binary':
             self.model = UsabilityPredictorBinary()
         else:
@@ -355,8 +358,10 @@ class UsabilityEvaluator(EvaluationFunction):
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         if self.target_type == 'cont':
-            preds = self.model.predict(designs)
-            return torch.clip(preds, min=0, max=1)
+            print(designs.shape)
+            designs = self.preprocessor(designs)
+            predictions = self.model(designs)
+            return torch.clip(predictions, min=0, max=1)
         elif self.target_type == 'binary':
             x_input = designs.detach().cpu().numpy()
             predictions = self.model.predict(x_input)
@@ -420,7 +425,7 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
 def get_standard_evaluations(device) -> List[EvaluationFunction]:
 
     StandardEvaluations = [
-        # UsabilityEvaluator(target_type='cont', device=device),
+        UsabilityEvaluator(target_type='cont', device=device),
         AeroEvaluator(device=device),
         ErgonomicsEvaluator(device=device),
         AestheticsEvaluator(mode="Embedding", batch_size=64, device=device),
