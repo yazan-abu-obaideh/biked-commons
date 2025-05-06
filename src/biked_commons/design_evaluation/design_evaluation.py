@@ -73,8 +73,8 @@ class AeroEvaluator(EvaluationFunction):
         #if rider_dims is a 1D tensor, expand it to match the batch size of designs
         if rider_dims.dim() == 1:
             rider_dims = rider_dims.unsqueeze(0).expand(designs.shape[0], -1)
+        rider_dims = rider_dims.to(self.device, dtype=self.dtype)
         combinations = torch.cat((int_pts, rider_dims), dim=1)
-        combinations = combinations.to(self.device, dtype=self.dtype)
         combinations = self.preprocessor(combinations)
         predictions = self.model(combinations)
         predictions = torch.clip(predictions, min=0)
@@ -228,6 +228,8 @@ class AestheticsEvaluator(EvaluationFunction):
                 f"Number of condition embeddings ({B_cond}) "
                 f"does not match number of designs ({N})"
             )
+        
+        embed = embed.to(self.device, dtype=self.dtype)
 
         cos_sim = F.cosine_similarity(preds, embed, dim=1)
         return (1 - cos_sim) / 2
@@ -276,6 +278,8 @@ class ErgonomicsEvaluator(EvaluationFunction):
         rider_dims = conditioning["Rider"]
         if rider_dims.dim() == 1:
             rider_dims = rider_dims.unsqueeze(0).expand(designs.shape[0], -1)
+
+        rider_dims = rider_dims.to(self.device, dtype=self.dtype)
 
         assert "Use Case" in conditioning, "Use Case must be provided in conditioning to calculate ergonomics."
         use_case = conditioning["Use Case"]
@@ -360,7 +364,7 @@ class UsabilityEvaluator(EvaluationFunction):
             return torch.tensor(predictions, dtype=self.dtype, device=self.device)
 
     
-def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], column_names: List[str]):
+def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], column_names: List[str], device="cpu"):
 
     column_names = list(column_names)
 
@@ -413,13 +417,16 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
 
 
 
+def get_standard_evaluations(device) -> List[EvaluationFunction]:
 
-StandardEvaluations: List[EvaluationFunction] = [
-    UsabilityEvaluator(),
-    AeroEvaluator(),
-    ErgonomicsEvaluator(),
-    AestheticsEvaluator(mode="Embedding", batch_size=64),
-    StructuralEvaluator(),
-    ValidationEvaluator(),
-    FrameValidityEvaluator()
-]
+    StandardEvaluations = [
+        # UsabilityEvaluator(target_type='cont', device=device),
+        AeroEvaluator(device=device),
+        ErgonomicsEvaluator(device=device),
+        AestheticsEvaluator(mode="Embedding", batch_size=64, device=device),
+        StructuralEvaluator(device=device),
+        ValidationEvaluator(device=device),
+        FrameValidityEvaluator(device=device)
+    ]
+
+    return StandardEvaluations

@@ -145,7 +145,6 @@ def knee_extension_angle(bike_vectors, body_vectors, CA, ret_a2=False, eps=1e-6)
     LX = CL * torch.cos(CA) - SX
     LY = SY - CL * torch.sin(CA)
     x_2 = torch.sqrt(LX ** 2 + LY ** 2)
-
     alpha_1 = torch.arccos(torch.clamp((x_1 ** 2 - UL_s - x_2 ** 2) / (-2 * UL * x_2), -1.0 + eps, 1.0 - eps))
     alpha_2 = torch.atan2(LY, LX) - alpha_1
     if ret_a2:

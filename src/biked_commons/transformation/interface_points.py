@@ -20,6 +20,8 @@ def calculate_interace_points_df(df):
 
 
 def calculate_interface_points(x, dtype=torch.float32, eps=1e-6):
+    device = x.device
+
     stack = x[:, 0]
     oh0 = x[:, 1]  # Handlebar style OHCLASS: 0
     oh1 = x[:, 2]  # Handlebar style OHCLASS: 1
@@ -63,8 +65,8 @@ def calculate_interface_points(x, dtype=torch.float32, eps=1e-6):
 
 
     # posx and pos y are offset of hand position from handlbar mount
-    posx = torch.zeros(numfeat, dtype=torch.float32)
-    posy = torch.zeros(numfeat, dtype=torch.float32)
+    posx = torch.zeros(numfeat, dtype=torch.float32, device=device)
+    posy = torch.zeros(numfeat, dtype=torch.float32, device=device)
 
     # Precompute common trig terms
     cos_angle = torch.cos(handle_angle)

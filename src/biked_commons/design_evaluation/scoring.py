@@ -8,7 +8,7 @@ from sklearn.preprocessing import StandardScaler
 import os
 from biked_commons.conditioning import conditioning
 from biked_commons.resource_utils import split_datasets_path, resource_path
-from biked_commons.design_evaluation.design_evaluation import construct_tensor_evaluator, StandardEvaluations, EvaluationFunction
+from biked_commons.design_evaluation.design_evaluation import construct_tensor_evaluator, EvaluationFunction
 
 
 class ScoringFunction(ABC):
@@ -167,8 +167,7 @@ class MinimumObjective(ScoringFunction):
         valid_objective_scores = objective_scores[validity_mask]
         if valid_objective_scores.size == 0:
             return np.ones_like(objective_scores[0]) * obj_ref_point
-        valid_subset = valid_objective_scores[validity_mask, :]
-        minscores = np.min(valid_subset, axis=0)
+        minscores = np.min(valid_objective_scores, axis=0)
         return minscores
     
 class MeanObjective(ScoringFunction):
@@ -184,8 +183,7 @@ class MeanObjective(ScoringFunction):
         valid_objective_scores = objective_scores[validity_mask]
         if valid_objective_scores.size == 0:
             return np.ones_like(objective_scores[0]) * obj_ref_point
-        valid_subset = valid_objective_scores[validity_mask, :]
-        meanscores = np.mean(valid_subset, axis=0)
+        meanscores = np.mean(valid_objective_scores, axis=0)
         return meanscores
     
 class ConstraintViolationRate(ScoringFunction):
@@ -226,12 +224,13 @@ def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functi
         score_names = []
         scores = []
         evaluation_scores = evaluator(designs, condition)
-        objective_scores = evaluation_scores[:, isobjective].detach().numpy()
+        objective_scores = evaluation_scores[:, isobjective].detach().cpu().numpy()
         ref_point_exp = np.expand_dims(obj_ref_point, axis=0)
         ref_point_exp = np.repeat(ref_point_exp, objective_scores.shape[0], axis=0)
         objective_scores[np.isnan(objective_scores)] = ref_point_exp[np.isnan(objective_scores)]
-        constraint_scores = evaluation_scores[:, ~isobjective].detach().numpy()
-        for scoring_function in scoring_functions:
+        constraint_scores = evaluation_scores[:, ~isobjective].detach().cpu().numpy()
+        designs = designs.detach().cpu().numpy()
+        for scoring_function in scoring_functions:    
             raw = scoring_function.evaluate(designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point)
 
             arr = np.atleast_1d(raw)
