@@ -29,11 +29,12 @@ class GradBaseSolver:
 
 
 class GradAggSolver(GradBaseSolver):
-    def __init__(self, step_size, max_iter, tol):
+    def __init__(self, step_size, max_iter, tol, device='cpu'):
+        self.device = device
         super().__init__(step_size, max_iter, tol)
 
     def solve(self, problem, x, prefs, args, ref_point):
-        x = Variable(x, requires_grad=True)
+        x = torch.tensor(x, dtype=torch.float32, requires_grad=True, device=self.device)
 
         # ref_point = array([2.0, 2.0])
         # ind = HV(ref_point = get_hv_ref_dict(args.problem_name))
@@ -45,27 +46,35 @@ class GradAggSolver(GradBaseSolver):
         hv_arr = []
         y_arr = []
 
-        prefs = Tensor(prefs)
+        if not isinstance(prefs, torch.Tensor):
+            prefs = torch.tensor(prefs, dtype=torch.float32, device=self.device)
+        else:
+            prefs = prefs.to(dtype=torch.float32, device=self.device)
+
+        # prefs = Tensor(prefs)
         optimizer = SGD([x], lr=self.step_size)
         agg_func = scalar_dict[args.agg]
         res = {}
         for i in tqdm(range(self.max_iter)):
             y = problem.evaluate(x)
 
-            hv_arr.append(ind.do(y.detach().numpy()))
+            hv_arr.append(ind.do(y.detach().cpu().numpy()))
 
             agg_val = agg_func(y, prefs)
             optimizer.zero_grad()
             torch.sum(agg_val).backward()
             optimizer.step()
 
-            y_arr.append(y.detach().numpy())
+            y_arr.append(y.detach().cpu().numpy())
 
             if 'lbound' in dir(problem):
-                x.data = torch.clamp(x.data, torch.Tensor(problem.lbound) + solution_eps, torch.Tensor(problem.ubound)-solution_eps)
+                x.data = torch.clamp(x.data, 
+                     torch.tensor(problem.lbound, device=x.device, dtype=torch.float32) + solution_eps, 
+                     torch.tensor(problem.ubound, device=x.device, dtype=torch.float32) - solution_eps)
 
-        res['x'] = x.detach().numpy()
-        res['y'] = y.detach().numpy()
+
+        res['x'] = x.detach().cpu().numpy()
+        res['y'] = y.detach().cpu().numpy()
         res['hv_arr'] = hv_arr
         res['y_arr'] = y_arr
         return res
