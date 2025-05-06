@@ -73,9 +73,10 @@ class UsabilityPredictorBinary:
 
 class UsabilityPredictorContinuous:
     """Predicts continuous usability. Works on scaled input."""
-    def __init__(self):
+    def __init__(self, device):
         self._scaler = _load_scaler()
-        self._model = _load_mlp_model()
+        self._model = _load_mlp_model().to(device=device)
+        
 
     def predict(self, x: torch.Tensor) -> torch.Tensor:
         return self._predict(self._scale_if_needed(x))

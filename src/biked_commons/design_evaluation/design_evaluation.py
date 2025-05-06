@@ -332,7 +332,7 @@ class UsabilityEvaluator(EvaluationFunction):
         super().__init__(device, dtype)
         self.target_type = target_type
         if target_type == 'cont':
-            self.model = UsabilityPredictorContinuous()
+            self.model = UsabilityPredictorContinuous(device)
         elif target_type == 'binary':
             self.model = UsabilityPredictorBinary()
         else:
