@@ -73,6 +73,8 @@ class AeroEvaluator(EvaluationFunction):
         #if rider_dims is a 1D tensor, expand it to match the batch size of designs
         if rider_dims.dim() == 1:
             rider_dims = rider_dims.unsqueeze(0).expand(designs.shape[0], -1)
+        elif rider_dims.shape[0] == 1:
+            rider_dims = rider_dims.expand(designs.shape[0], -1)
         rider_dims = rider_dims.to(self.device, dtype=self.dtype)
         combinations = torch.cat((int_pts, rider_dims), dim=1)
         combinations = self.preprocessor(combinations)
@@ -213,6 +215,11 @@ class AestheticsEvaluator(EvaluationFunction):
                 embed = cond
             else:
                 raise TypeError("For Embedding mode, conditioning must be a Tensor ")
+            
+            if embed.dim() == 1:
+                embed = embed.unsqueeze(0).expand(designs.shape[0], -1)
+            elif embed.shape[0] == 1:
+                embed = embed.expand(designs.shape[0], -1)
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")
 
@@ -220,7 +227,6 @@ class AestheticsEvaluator(EvaluationFunction):
         preds   = self.model(designs)
         N       = preds.size(0)
         B_cond  = embed.size(0)
-
         if B_cond == 1 and N > 1:
             embed = embed.expand(N, -1)
         elif B_cond != N:
@@ -305,8 +311,8 @@ class ErgonomicsEvaluator(EvaluationFunction):
             n, k = use_case.shape
             if k != 3:
                 raise ValueError(f"If 2D, Use Case tensor must have shape (n,3), got {tuple(use_case.shape)}")
-            if n != designs.shape[0]:
-                raise ValueError(f"Number of rows in Use Case ({n}) must match number of designs ({designs.shape[0]})")
+            if n == 1:
+                use_case = use_case.expand(designs.shape[0], -1)
             # check binary values
             if not torch.logical_or(use_case == 0, use_case == 1).all():
                 raise ValueError("Use Case 2D tensor must contain only 0s and 1s")
@@ -358,7 +364,6 @@ class UsabilityEvaluator(EvaluationFunction):
 
     def evaluate(self, designs: torch.Tensor, conditioning: dict = {}) -> torch.Tensor:
         if self.target_type == 'cont':
-            print(designs.shape)
             designs = self.preprocessor(designs)
             predictions = self.model(designs)
             return torch.clip(predictions, min=0, max=1)

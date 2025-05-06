@@ -9,6 +9,7 @@ import os
 from biked_commons.conditioning import conditioning
 from biked_commons.resource_utils import split_datasets_path, resource_path
 from biked_commons.design_evaluation.design_evaluation import construct_tensor_evaluator, EvaluationFunction
+from biked_commons.transformation import one_hot_encoding
 
 
 class ScoringFunction(ABC):
@@ -98,7 +99,7 @@ class ConstraintSatisfactionRate(ScoringFunction):
         return ["Constraint Satisfaction Rate"]
     
     def evaluate(self, designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point):
-        return np.mean(constraint_scores <=0)
+        return np.mean(np.all(constraint_scores <=0, axis=1))
 
 
 class MMD(ScoringFunction): 
@@ -221,15 +222,21 @@ def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functi
 
     obj_ref_point = get_ref_point(evaluator, objective_names, requirement_names) #1D numpy array
     def scorer(designs: torch.Tensor, condition: dict = {}) -> pd.Series:
+        device = designs.device
+        designs = designs.detach().cpu().numpy()
         score_names = []
         scores = []
-        evaluation_scores = evaluator(designs, condition)
+        designs_df = pd.DataFrame(designs, columns=column_names)
+        designs_reverse_oh = one_hot_encoding.decode_to_mixed(designs_df)
+        designs_continuous_mapped = one_hot_encoding.encode_to_continuous(designs_reverse_oh)
+        designs_mapped_tens = torch.tensor(designs_continuous_mapped.values, dtype=torch.float32).to(device)
+        evaluation_scores = evaluator(designs_mapped_tens, condition)
         objective_scores = evaluation_scores[:, isobjective].detach().cpu().numpy()
         ref_point_exp = np.expand_dims(obj_ref_point, axis=0)
         ref_point_exp = np.repeat(ref_point_exp, objective_scores.shape[0], axis=0)
         objective_scores[np.isnan(objective_scores)] = ref_point_exp[np.isnan(objective_scores)]
         constraint_scores = evaluation_scores[:, ~isobjective].detach().cpu().numpy()
-        designs = designs.detach().cpu().numpy()
+        
         for scoring_function in scoring_functions:    
             raw = scoring_function.evaluate(designs, objective_scores, constraint_scores, objective_names, constraint_names, obj_ref_point)
 
