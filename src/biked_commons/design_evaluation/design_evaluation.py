@@ -222,7 +222,7 @@ class AestheticsEvaluator(EvaluationFunction):
                 embed = embed.expand(designs.shape[0], -1)
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")
-
+        
         designs = self.preprocessor(designs)
         preds   = self.model(designs)
         N       = preds.size(0)

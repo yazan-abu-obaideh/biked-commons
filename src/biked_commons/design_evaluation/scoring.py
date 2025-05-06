@@ -33,7 +33,7 @@ def compute_ref_point(ref_scores, reduction):
         ref_point = np.mean(np.abs(ref_scores), axis=0)
     return ref_point
 
-def recompute_ref_point(evaluator, eval_names, path, reduction):
+def recompute_ref_point(evaluator, eval_names, path, reduction, device):
     print("Calculating reference point for scoring functions...")
     data = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0)
     num_data = data.shape[0]
@@ -42,15 +42,14 @@ def recompute_ref_point(evaluator, eval_names, path, reduction):
     embedding = conditioning.sample_image_embedding(num_data, split="test")
 
     condition = {"Rider": rider_condition, "Use Case": use_case_condition, "Embedding": embedding}
-
-    scores = evaluator(torch.tensor(data.values, dtype=torch.float32), condition)
-    objective_scores = scores.detach().numpy()
+    scores = evaluator(torch.tensor(data.values, dtype=torch.float32, device=device), condition)
+    objective_scores = scores.detach().cpu().numpy()
     ref_point = compute_ref_point(objective_scores, reduction)
     df = pd.Series(ref_point, index=eval_names)
     df.to_csv(path, header=False)
     return df
 
-def get_ref_point(evaluator, objective_names, eval_names, reduction = "max"):
+def get_ref_point(evaluator, objective_names, eval_names, reduction = "max", device = "cpu"):
     if reduction=="max":
         path = resource_path("misc/ref_point.csv")
     elif reduction=="meanabs":
@@ -58,13 +57,13 @@ def get_ref_point(evaluator, objective_names, eval_names, reduction = "max"):
     else:
         raise ValueError("Invalid reduction method. Use 'max' or 'meanabs'.")
     if not os.path.exists(path):
-        ref_point_df = recompute_ref_point(evaluator, eval_names, path, reduction)
+        ref_point_df = recompute_ref_point(evaluator, eval_names, path, reduction, device)
     else:
         ref_point_df = pd.read_csv(path, index_col=0, header=None)
         ref_point_columns = ref_point_df.index.values
         if not np.all(np.isin(objective_names, ref_point_columns)):
             print("Reference point does not include all objective names. Recomputing...")
-            ref_point_df = recompute_ref_point(evaluator, eval_names, path, reduction)
+            ref_point_df = recompute_ref_point(evaluator, eval_names, path, reduction, device)
     ref_point_df = ref_point_df.loc[objective_names]
     ref_point = ref_point_df.values.flatten()
     return ref_point
@@ -212,15 +211,15 @@ class MeanConstraintViolationMagnitude(ScoringFunction):
         meanscores = np.mean(constraint_scores, axis=0)
         return meanscores
 
-def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functions: List[EvaluationFunction], column_names: List[str]):
+def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functions: List[EvaluationFunction], column_names: List[str], device: str = "cpu") -> callable:
 
-    evaluator, requirement_names, requirement_types = construct_tensor_evaluator(evaluation_functions, column_names)
+    evaluator, requirement_names, requirement_types = construct_tensor_evaluator(evaluation_functions, column_names, device)
     requirement_names = np.array(requirement_names)
     isobjective = torch.tensor(requirement_types) == 1
     objective_names = requirement_names[isobjective]
     constraint_names = requirement_names[~isobjective]
 
-    obj_ref_point = get_ref_point(evaluator, objective_names, requirement_names) #1D numpy array
+    obj_ref_point = get_ref_point(evaluator, objective_names, requirement_names, "max", device) #1D numpy array
     def scorer(designs: torch.Tensor, condition: dict = {}) -> pd.Series:
         device = designs.device
         designs = designs.detach().cpu().numpy()

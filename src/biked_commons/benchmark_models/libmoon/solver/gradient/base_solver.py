@@ -39,11 +39,13 @@ class GradAggSolver(GradBaseSolver):
         # ref_point = array([2.0, 2.0])
         # ind = HV(ref_point = get_hv_ref_dict(args.problem_name))
         # ind = HV(ref_point = array([1.0, 1.0]))
-        ind = HV(ref_point = ref_point)
+        
+        # ind = HV(ref_point = ref_point)
+    
 
 
 
-        hv_arr = []
+        # hv_arr = []
         y_arr = []
 
         if not isinstance(prefs, torch.Tensor):
@@ -57,8 +59,8 @@ class GradAggSolver(GradBaseSolver):
         res = {}
         for i in tqdm(range(self.max_iter)):
             y = problem.evaluate(x)
-
-            hv_arr.append(ind.do(y.detach().cpu().numpy()))
+            
+            # hv_arr.append(ind.do(y.detach().cpu().numpy()))
 
             agg_val = agg_func(y, prefs)
             optimizer.zero_grad()
@@ -75,6 +77,6 @@ class GradAggSolver(GradBaseSolver):
 
         res['x'] = x.detach().cpu().numpy()
         res['y'] = y.detach().cpu().numpy()
-        res['hv_arr'] = hv_arr
+        # res['hv_arr'] = hv_arr
         res['y_arr'] = y_arr
         return res
