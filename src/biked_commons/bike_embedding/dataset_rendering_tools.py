@@ -192,32 +192,34 @@ def load_pngs(png_dir: str,
     return torch.stack(imgs, dim=0), names # N x 3 x H x W
 
 def embed_pngs(
-        png_dir: str,
-        records_with_id: Dict[str, dict],
-        batch_size: int = 32,
-        emb_file: str = None,
+    png_dir: str,
+    records_with_id: Dict[str, dict],
+    batch_size: int = 32,
+    emb_file: str = None,
 ):
-    """
-    Loads all PNGs from png_dir, stacks them into a tensor, and embeds them using the CLIP model.
-    """
-    # Load all PNGs and stack them into a tensor
-    imgs, names = load_pngs(png_dir, records_with_id)
-
-    #downscale  by a factor of 2
-    # imgs = torch.nn.functional.interpolate(imgs, scale_factor=0.5, mode='bilinear', align_corners=False)
-
-    #move to GPU if available
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    
-    # Embed the images using the CLIP model
     clip_embedder = ClipEmbeddingCalculator(batch_size=batch_size, device=device)
-    embeddings = clip_embedder.embed_images(imgs)
 
-    # Save the embeddings to csv using names
-    df = pd.DataFrame(embeddings.cpu().numpy(), index=names)
-    df.to_csv(emb_file, index=True)
+    all_embs = []
+    all_names = []
+    ids = list(records_with_id)
 
-# def embed_pngs
+    for i in range(0, len(ids), batch_size):
+        batch_ids = ids[i : i + batch_size]
+        subset = {rid: records_with_id[rid] for rid in batch_ids}
+        imgs, names = load_pngs(png_dir, subset)
+        if not names:
+            continue
+
+        with torch.no_grad():
+            emb = clip_embedder.embed_images(imgs).cpu()
+        all_embs.append(emb)
+        all_names.extend(names)
+
+    embs = torch.cat(all_embs, dim=0).numpy()
+    df = pd.DataFrame(embs, index=all_names)
+    df.to_csv(emb_file or "embeddings.csv")
+
 
 def process_rendering_stack(records, xml_dir: str, svg_dir: str, png_dir: str, emb_file: str, rendering_engine: RenderingEngine, process_pool_workers: int, thread_pool_workers: int):
     bikes_to_xmls(records, process_pool_workers, xml_dir)

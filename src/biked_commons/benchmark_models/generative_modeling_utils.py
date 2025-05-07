@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 import numpy as np
+from torch.autograd import grad
 
 
 from biked_commons.conditioning import conditioning
@@ -38,16 +39,16 @@ def parse_continuous_condition(condition):
     return condition
 
 def piecewise_constraint_score(constraint_scores, constraint_falloff = 10):
-    piece1 = torch.exp(constraint_scores * constraint_falloff)/constraint_falloff
+    constraint_scores_safexp = torch.clamp(constraint_scores, max=0.0)
+    piece1 = torch.exp(constraint_scores_safexp * constraint_falloff)/constraint_falloff
     piece2 = constraint_scores + 1/constraint_falloff
     mask = constraint_scores < 0.0
     mask = mask.float()
     result = piece1 * mask + piece2 * (1 - mask)
     return result
 
-def get_composite_score_fn(constrant_vs_objective_weight = 10.0, constraint_falloff=10.0, device="cpu"):
-    data = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0)
-    evaluator, requirement_names, requirement_types = construct_tensor_evaluator(get_standard_evaluations(device), data.columns)
+def get_composite_score_fn(scaler, columns, constrant_vs_objective_weight = 10.0, constraint_falloff=10.0, device="cpu"):
+    evaluator, requirement_names, requirement_types = construct_tensor_evaluator(get_standard_evaluations(device), columns)
 
     isobjective = torch.tensor(requirement_types) == 1
 
@@ -56,9 +57,10 @@ def get_composite_score_fn(constrant_vs_objective_weight = 10.0, constraint_fall
 
     assert weights.min() > 0, "Ref point should be greater than 0"
 
-    def composite_score_fn(data_tens, continuous_condition, evaluator = evaluator):
+    def composite_score_fn(x, continuous_condition, evaluator = evaluator, scaler = scaler):
+        x = scaler.unscale(x)
         condition = parse_continuous_condition(continuous_condition)
-        eval_scores = evaluator(data_tens, condition)
+        eval_scores = evaluator(x, condition)
         scaled_scores = eval_scores / weights
         objective_scores = scaled_scores[:, isobjective]
         constraint_scores_raw = scaled_scores[:, ~isobjective]
@@ -66,36 +68,84 @@ def get_composite_score_fn(constrant_vs_objective_weight = 10.0, constraint_fall
 
         total_scores = torch.sum(objective_scores, dim=1) + torch.sum(constraint_scores, dim=1) * constrant_vs_objective_weight
         composite_scores = total_scores / (len(objective_scores) + len(constraint_scores) * constrant_vs_objective_weight)
-        return composite_scores
+
+        quality_scores = 1/composite_scores
+        # print("Quality scores: ", quality_scores)
+        return quality_scores
 
     return composite_score_fn
 
-def get_diversity_loss_fn(scaler:TorchScaler, diversity_weight=0.1, score_weight=0.1, constraint_vs_objective_weight=10.0, constraint_falloff=10.0, device="cpu"):
-    composite_score_fn = get_composite_score_fn(constrant_vs_objective_weight = constraint_vs_objective_weight, constraint_falloff = constraint_falloff, device=device)
+def get_uneven_batch_sizes(total_data_points, batch_size):
+    """
+    Given the total number of data points and a target batch size, 
+    returns a list of batch sizes that sum up to the total number of data points.
+    The batch sizes are distributed as evenly as possible but may be uneven.
+
+    :param total_data_points: Total number of data points (int).
+    :param batch_size: Target batch size (int).
+    :return: A list of batch sizes (list of int).
+    """
+    # Calculate the number of batches needed
+    num_batches = total_data_points // batch_size
+    remainder = total_data_points % batch_size
+
+    # Initialize the batch sizes
+    batch_sizes = [batch_size] * num_batches
+
+    # Distribute the remainder across the batches
+    for i in range(remainder):
+        batch_sizes[i] += 1
+
+    return batch_sizes
+
+
+def get_diversity_loss_fn(scaler:TorchScaler, columns, diversity_weight=0.1, score_weight=0.1, constraint_vs_objective_weight=10.0, constraint_falloff=10.0, dpp_batch=16, device="cpu"):
+    composite_score_fn = get_composite_score_fn(scaler, columns, constrant_vs_objective_weight = constraint_vs_objective_weight, constraint_falloff = constraint_falloff, device=device)
 
     def diversity_loss_fn(x, condition, diversity_weight=diversity_weight, score_weight=score_weight):
-        x = scaler.unscale(x)
+        
         scores = composite_score_fn(x, condition)
 
-        # Compute pairwise squared Euclidean distances
-        r = torch.sum(x ** 2, dim=1, keepdim=True)
-        D = r - 2 * torch.matmul(x, x.T) + r.T
-        
-        # Compute the similarity matrix using RBF
-        S = torch.exp(-0.5 * D ** 2)
+        # Initialize the total loss
+        total_loss = 0.0
 
-        # Q = tf.tensordot(tf.expand_dims(y, 1), tf.expand_dims(y, 0), 1) # quality matrix
-        Q = torch.matmul(scores, scores.T) ** (score_weight)  # quality matrix
-        L = S * Q
-        
-        # Compute the eigenvalues of the similarity matrix
-        try:
-            eig_val = torch.linalg.eigvalsh(S)
-        except:
-            eig_val = torch.ones(x.size(0), device=x.device)
-        
-        # Compute the loss as the negative mean log of the eigenvalues
-        loss = -torch.mean(torch.log(torch.clamp(eig_val, min=1e-7)))
+        # Get uneven batch sizes based on the total number of data points
+        batch_sizes = get_uneven_batch_sizes(x.size(0), dpp_batch)
+
+        # Split the data into uneven batches
+        start_idx = 0
+        for batch_size in batch_sizes:
+            # Get the current batch
+            end_idx = start_idx + batch_size
+            x_batch = x[start_idx:end_idx]
+            scores_batch = scores[start_idx:end_idx]
+            # Compute pairwise squared Euclidean distances for the batch
+            r = torch.sum(x_batch ** 2, dim=1, keepdim=True)
+            D = r - 2 * torch.matmul(x_batch, x_batch.T) + r.T
+            D_norm = D / x_batch.size(1)  # Normalize by the number of features
+            # Compute the similarity matrix using RBF for the batch
+            S = torch.exp(-0.5 * D_norm ** 2) / 2
+
+            # Compute the quality matrix for the batch
+            Q = torch.matmul(scores_batch, scores_batch.T)
+            Q = torch.pow(Q, score_weight)
+            L = S * Q
+
+            # Compute the eigenvalues of the similarity matrix for the batch
+            try:
+                eig_val = torch.linalg.eigvalsh(L)
+            except:
+                print(f"Eigenvalue computation failed for batch with size {batch_size}")
+                eig_val = torch.ones(x_batch.size(0), device=x.device)
+            # Compute the loss for the batch as the negative mean log of the eigenvalues
+            batch_loss = -torch.mean(torch.log(torch.clamp(eig_val, min=1e-9)))
+
+            total_loss += batch_loss
+
+            # Update the start index for the next batch
+            start_idx = end_idx
+        # Compute the final loss by averaging across batches
+        loss = total_loss / len(batch_sizes)
         return loss * diversity_weight
     return diversity_loss_fn
 
@@ -202,10 +252,11 @@ def VAE_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
     L_KL = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) / data_batch.size(0)
 
     L_aux = auxiliary_loss_fn(reconstructed, cond_batch)
+
     L_tot = alpha * L_KL + L_R + L_aux
 
     L_tot.backward()
-    
+
     D_opt.step()
     G_opt.step()
     
@@ -213,27 +264,27 @@ def VAE_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
     return report
 
 
-# class NoiseScheduler:
-#     def __init__(self, num_timesteps, beta_start=0.0001, beta_end=0.02, device="cpu"):
+class NoiseScheduler:
+    def __init__(self, num_timesteps, beta_start=0.0001, beta_end=0.02, device="cpu"):
 
-#         self.num_timesteps = num_timesteps
-#         self.beta_start = beta_start
-#         self.beta_end = beta_end
-#         self.device = torch.device(device)
+        self.num_timesteps = num_timesteps
+        self.beta_start = beta_start
+        self.beta_end = beta_end
+        self.device = torch.device(device)
 
-#         # Linear beta schedule
-#         self.betas = torch.linspace(self.beta_start, self.beta_end, self.num_timesteps, device=self.device)
-#         self.alphas = 1.0 - self.betas
-#         self.alpha_cumprod = torch.cumprod(self.alphas, dim=0)
-#         self.alpha_cumprod_prev = torch.cat([torch.tensor([1.0], device=self.device, dtype=self.betas.dtype), self.alpha_cumprod[:-1]])
+        # Linear beta schedule
+        self.betas = torch.linspace(self.beta_start, self.beta_end, self.num_timesteps, device=self.device)
+        self.alphas = 1.0 - self.betas
+        self.alpha_cumprod = torch.cumprod(self.alphas, dim=0)
+        self.alpha_cumprod_prev = torch.cat([torch.tensor([1.0], device=self.device, dtype=self.betas.dtype), self.alpha_cumprod[:-1]])
 
-#         self.sqrt_alpha_cumprod = torch.sqrt(self.alpha_cumprod)
-#         self.sqrt_one_minus_alpha_cumprod = torch.sqrt(torch.clamp(1.0 - self.alpha_cumprod, min=1e-8))
+        self.sqrt_alpha_cumprod = torch.sqrt(self.alpha_cumprod)
+        self.sqrt_one_minus_alpha_cumprod = torch.sqrt(torch.clamp(1.0 - self.alpha_cumprod, min=1e-8))
 
-#     def get_variance(self, t):
-#         if isinstance(t, torch.Tensor) and t.ndim > 0:  # Batched timesteps
-#             return torch.index_select(self.betas, 0, t).to(self.device)
-#         return self.betas[t].to(self.device)  # Single timestep
+    def get_variance(self, t):
+        if isinstance(t, torch.Tensor) and t.ndim > 0:  # Batched timesteps
+            return torch.index_select(self.betas, 0, t).to(self.device)
+        return self.betas[t].to(self.device)  # Single timestep
 
 
 # def DDPM_step_wrapper(scheduler):
@@ -262,43 +313,42 @@ def VAE_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
 #         return {"loss": loss.item()}
 #     return DDPM_step
 
-# def DDPM_step_cond_wrapper(scheduler):
-#     def DDPM_step_cond(D, G, D_opt, G_opt, P_batch, cond_batch, noise_batch, batch_size, device, objective_weight=0, diversity_weight=0):
-#         P_labels = torch.ones(P_batch.size(0), 1, device=device)  # Class 1 for P_batch
-#         N_labels = torch.zeros(N_batch.size(0), 1, device=device)  # Class 0 for N_batch
+def DDPM_step_cond_wrapper(scheduler):
+    def DDPM_step_cond(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size, device, auxiliary_loss_fn):
+        # P_labels = torch.ones(data_batch.size(0), 1, device=device)  # Class 1 for P_batch
         
-#         data_batch = torch.cat([P_batch, N_batch], dim=0)
-#         labels = torch.cat([P_labels, N_labels], dim=0)
+        # data_batch = torch.cat([P_batch, N_batch], dim=0) 
+        # labels = torch.cat([P_labels, N_labels], dim=0)
 
-#         perm = torch.randperm(data_batch.size(0))
-#         data_batch = data_batch[perm]
-#         labels = labels[perm]
+        # perm = torch.randperm(data_batch.size(0))
+        # data_batch = data_batch[perm]
+        # labels = labels[perm]
 
-#         t = torch.randint(0, scheduler.num_timesteps, (data_batch.size(0),), device=device)
-#         noise = torch.randn_like(data_batch).to(device)
+        t = torch.randint(0, scheduler.num_timesteps, (data_batch.size(0),), device=device)
+        noise = torch.randn_like(data_batch).to(device)
 
-#         sqrt_alpha_cumprod_t = scheduler.sqrt_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(alpha_t_bar)
-#         sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(1 - alpha_t_bar)
+        sqrt_alpha_cumprod_t = scheduler.sqrt_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(alpha_t_bar)
+        sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(1 - alpha_t_bar)
 
-#         x_t = sqrt_alpha_cumprod_t * data_batch + sqrt_one_minus_alpha_cumprod_t * noise
+        x_t = sqrt_alpha_cumprod_t * data_batch + sqrt_one_minus_alpha_cumprod_t * noise
 
-#         t_embedded = t.unsqueeze(-1).float() / scheduler.num_timesteps
+        t_embedded = t.unsqueeze(-1).float() / scheduler.num_timesteps
 
-#         x_input = torch.cat([x_t, labels, t_embedded], dim=-1)
+        x_input = torch.cat([x_t, cond_batch, t_embedded], dim=-1)
 
-#         noise_pred = D(x_input)
+        noise_pred = D(x_input)
 
-#         beta_t = scheduler.betas[t].unsqueeze(-1).to(device)  # Variance (beta_t)
-#         loss_weights = (1 / beta_t) / (1 / beta_t).mean()  # Normalize loss weights
-#         loss = (loss_weights * nn.MSELoss(reduction="none")(noise_pred, noise)).mean()
+        beta_t = scheduler.betas[t].unsqueeze(-1).to(device)  # Variance (beta_t)
+        loss_weights = (1 / beta_t) / (1 / beta_t).mean()  # Normalize loss weights
+        loss = (loss_weights * nn.MSELoss(reduction="none")(noise_pred, noise)).mean()
 
-#         # Backpropagation and optimization
-#         D.zero_grad()
-#         loss.backward()
-#         D_opt.step()
+        # Backpropagation and optimization
+        D.zero_grad()
+        loss.backward()
+        D_opt.step()
 
-#         return {"loss": loss.item()}
-#     return DDPM_step_cond
+        return {"loss": loss.item()}
+    return DDPM_step_cond
 
 
 class ReusableDataLoader:
@@ -413,11 +463,12 @@ def train(D, G, D_opt, G_opt, loader, num_steps, batch_size, noise_dim, train_st
 #     return DDPM_generate_guidance
 
 
-# def VAE_generate(D, G, cond_batch, latent_dim, device):
-#     numgen = cond_batch.shape[0]
-#     z = torch.randn(numgen, latent_dim).to(device)
-#     generated_data = G(z)
-#     return generated_data
+def VAE_generate(D, G, cond_batch, latent_dim, device):
+    numgen = cond_batch.shape[0]
+    z = torch.randn(numgen, latent_dim).to(device)
+    z_and_condition = torch.cat([z, cond_batch], dim=1)
+    generated_data = G(z_and_condition)
+    return generated_data
 
 # def VAE_generate_cond(D, G, cond_batch, latent_dim, device):
 #     numgen = cond_batch.shape[0]
@@ -455,13 +506,13 @@ def train_model(data, model_type, train_params, auxiliary_loss_fn, device):
         D_out = 1
         G_in = noise_dim +cond_dim
         G_out = data_dim
-    # elif model_type in ["VAE"]:
-    #     train_step = VAE_step
-    #     generate_fn = VAE_generate
-    #     D_in = data_dim
-    #     D_out = 2*noise_dim
-    #     G_in = noise_dim
-    #     G_out = data_dim
+    elif model_type in ["VAE"]:
+        train_step = VAE_step
+        generate_fn = VAE_generate
+        D_in = data_dim + cond_dim
+        D_out = 2*noise_dim
+        G_in = noise_dim + cond_dim
+        G_out = data_dim
     # elif model_type in ["DDPM_guidance"]:
     #     train_step = DDPM_step_wrapper(scheduler)
     #     scheduler = NoiseScheduler(1000, device = device)
