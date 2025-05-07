@@ -166,11 +166,11 @@ class AestheticsEvaluator(EvaluationFunction):
 
     def return_names(self) -> List[str]:
         if self.mode in ["Image", "Image Path"]:
-            return ["Cosine Similarity to Image"]
+            return ["Cosine Distance to Image"]
         elif self.mode == "Text":
-            return ["Cosine Similarity to Text"]
+            return ["Cosine Distance to Text"]
         elif self.mode == "Embedding":
-            return ["Cosine Similarity to Embedding"]
+            return ["Cosine Distance to Embedding"]
 
     def return_types(self) -> List[str]:
         return [1]

@@ -1,24 +1,24 @@
 Usability Score - 0 to 1,1.0
-Drag Force,29.001171
+Drag Force,29.636734
 Knee Angle Error,197.29372
-Hip Angle Error,805.2139
-Arm Angle Error,842.0781
-Cosine Similarity to Embedding,0.8126645
-Mass,161.2185
-Planar Compliance,64.50881
-Transverse Compliance,88.697876
-Eccentric Compliance,103.693924
+Hip Angle Error,807.75903
+Arm Angle Error,843.49
+Cosine Distance to Embedding,0.05417937
+Mass,29.103062
+Planar Compliance,16.96967
+Transverse Compliance,36.438366
+Eccentric Compliance,15.606129
 Planar Safety Factor,1.5
 Eccentric Safety Factor,1.5
 Saddle height too small,620.0
 Seat post too short,852.69995
 Head tube lower extension too great,40.0
 Head tube length too great,280.0
-Certain parameters must be positive,838.3
+Certain parameters must be positive,435.0
 Chain stay should be greater than wheel radius,368.0
 Chain stay should be greater than BB,0.0
 Seat stay should be greater than wheel radius,99.73654
-Down tube must reach head tube,0.0
+Down tube must reach head tube,-6.123234e-17
 The pedal shouldn't intersect the front wheel,509.5
 The crank shouldn't hit the ground when it is in its lower position,37.5
 RGB value should be less than 255,0.0

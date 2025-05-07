@@ -12,27 +12,34 @@ from biked_commons.transformation import one_hot_encoding
 
 
 def prepare_bike_bench():
-       data = pd.read_csv(resource_path("datasets/raw_datasets/bike_bench_mixed_modality.csv"), index_col=0)
-       data_oh = one_hot_encoding.encode_to_continuous(data)
+    data = pd.read_csv(resource_path("datasets/raw_datasets/bike_bench_mixed_modality.csv"), index_col=0)
+    data_oh = one_hot_encoding.encode_to_continuous(data)
 
-       columns_to_scale = ['Wall thickness Bottom Bracket', 'Wall thickness Top tube',
-              'Wall thickness Head tube', 'Wall thickness Down tube',
-              'Wall thickness Chain stay', 'Wall thickness Seat stay',
-              'Wall thickness Seat tube']
-       num = len(columns_to_scale)
+    #get any rows where any of the column values is more than 25 standard deviations away from the mean
+    def drop_outlier_rows(df, threshold=10):
+        return df[~((df - df.mean()).abs() > (threshold * df.std())).any(axis=1)]
+    
+    data_oh = drop_outlier_rows(data_oh, threshold=25)
 
-       covariance = np.full((num, num), 0.5)
-       covariance[np.diag_indices(num)] = 1.0
 
-       n = np.random.multivariate_normal(np.zeros(num), covariance, size = len(data_oh))
-       log_normal_samples = np.exp(n)
-       log_normal_samples
+    columns_to_scale = ['Wall thickness Bottom Bracket', 'Wall thickness Top tube',
+            'Wall thickness Head tube', 'Wall thickness Down tube',
+            'Wall thickness Chain stay', 'Wall thickness Seat stay',
+            'Wall thickness Seat tube']
+    num = len(columns_to_scale)
 
-       #multiply columns_to_scale with log normal samples
-       data_subset = data_oh[columns_to_scale].copy()
-       new_values = data_subset.values * log_normal_samples
-       data_oh[columns_to_scale] = new_values
-       data_oh.to_csv(split_datasets_path("bike_bench.csv"))
+    covariance = np.full((num, num), 0.5)
+    covariance[np.diag_indices(num)] = 1.0
+
+    n = np.random.multivariate_normal(np.zeros(num), covariance, size = len(data_oh))
+    log_normal_samples = np.exp(n)
+    log_normal_samples
+
+    #multiply columns_to_scale with log normal samples
+    data_subset = data_oh[columns_to_scale].copy()
+    new_values = data_subset.values * log_normal_samples
+    data_oh[columns_to_scale] = new_values
+    data_oh.to_csv(split_datasets_path("bike_bench.csv"))
 
 def prepare_validity():
     df = pd.read_csv(resource_path('datasets/raw_datasets/validity.csv'), index_col=0)

@@ -9,6 +9,7 @@ from biked_commons.conditioning import conditioning
 from biked_commons.design_evaluation.design_evaluation import *
 from biked_commons.resource_utils import split_datasets_path
 from biked_commons.conditioning import conditioning
+from biked_commons.design_evaluation import scoring
 
 class TorchScaler:
     def __init__(self, data):
@@ -36,13 +37,21 @@ def parse_continuous_condition(condition):
     condition = {"Rider": rider_condition, "Use Case": use_case_condition, "Embedding": image_embeddings}
     return condition
 
-def get_composite_score_fn(constrant_vs_objective_weight = 10.0, device="cpu"):
+def piecewise_constraint_score(constraint_scores, constraint_falloff = 10):
+    piece1 = torch.exp(constraint_scores * constraint_falloff)/constraint_falloff
+    piece2 = constraint_scores + 1/constraint_falloff
+    mask = constraint_scores < 0.0
+    mask = mask.float()
+    result = piece1 * mask + piece2 * (1 - mask)
+    return result
+
+def get_composite_score_fn(constrant_vs_objective_weight = 10.0, constraint_falloff=10.0, device="cpu"):
     data = pd.read_csv(split_datasets_path("bike_bench.csv"), index_col=0)
     evaluator, requirement_names, requirement_types = construct_tensor_evaluator(get_standard_evaluations(device), data.columns)
 
     isobjective = torch.tensor(requirement_types) == 1
 
-    weights = get_ref_point(evaluator, requirement_names, requirement_names, reduction="meanabs")
+    weights = scoring.get_ref_point(evaluator, requirement_names, requirement_names, reduction="meanabs", device=device)
     weights = torch.tensor(weights, dtype=torch.float32, device=device)
 
     assert weights.min() > 0, "Ref point should be greater than 0"
@@ -52,8 +61,8 @@ def get_composite_score_fn(constrant_vs_objective_weight = 10.0, device="cpu"):
         eval_scores = evaluator(data_tens, condition)
         scaled_scores = eval_scores / weights
         objective_scores = scaled_scores[:, isobjective]
-        constraint_scores = scaled_scores[:, ~isobjective]
-        constraint_scores = torch.clamp(constraint_scores, min=0.0)
+        constraint_scores_raw = scaled_scores[:, ~isobjective]
+        constraint_scores = piecewise_constraint_score(constraint_scores_raw, constraint_falloff)
 
         total_scores = torch.sum(objective_scores, dim=1) + torch.sum(constraint_scores, dim=1) * constrant_vs_objective_weight
         composite_scores = total_scores / (len(objective_scores) + len(constraint_scores) * constrant_vs_objective_weight)
@@ -61,12 +70,13 @@ def get_composite_score_fn(constrant_vs_objective_weight = 10.0, device="cpu"):
 
     return composite_score_fn
 
-def get_diversity_loss_fn(scaler:TorchScaler, diversity_weight=0.1, score_weight=0.1, constraint_vs_objective_weight=10.0, device="cpu"):
-    composite_score_fn = get_composite_score_fn(constrant_vs_objective_weight = constraint_vs_objective_weight, device=device)
+def get_diversity_loss_fn(scaler:TorchScaler, diversity_weight=0.1, score_weight=0.1, constraint_vs_objective_weight=10.0, constraint_falloff=10.0, device="cpu"):
+    composite_score_fn = get_composite_score_fn(constrant_vs_objective_weight = constraint_vs_objective_weight, constraint_falloff = constraint_falloff, device=device)
 
     def diversity_loss_fn(x, condition, diversity_weight=diversity_weight, score_weight=score_weight):
         x = scaler.unscale(x)
         scores = composite_score_fn(x, condition)
+
         # Compute pairwise squared Euclidean distances
         r = torch.sum(x ** 2, dim=1, keepdim=True)
         D = r - 2 * torch.matmul(x, x.T) + r.T
@@ -75,8 +85,8 @@ def get_diversity_loss_fn(scaler:TorchScaler, diversity_weight=0.1, score_weight
         S = torch.exp(-0.5 * D ** 2)
 
         # Q = tf.tensordot(tf.expand_dims(y, 1), tf.expand_dims(y, 0), 1) # quality matrix
-        Q = torch.matmul(scores, scores.T)  # quality matrix
-        L = S * Q ** (score_weight)
+        Q = torch.matmul(scores, scores.T) ** (score_weight)  # quality matrix
+        L = S * Q
         
         # Compute the eigenvalues of the similarity matrix
         try:
@@ -90,7 +100,7 @@ def get_diversity_loss_fn(scaler:TorchScaler, diversity_weight=0.1, score_weight
     return diversity_loss_fn
 
 class Down_Model(nn.Module):
-    def __init__(self, in_dim, out_dim, hidden_dim=400, num_hidden_layers=1):
+    def __init__(self, in_dim, out_dim, hidden_dim=400, num_hidden_layers=2):
         super(Down_Model, self).__init__()
         
         self.layers = nn.ModuleList([nn.Linear(in_dim, hidden_dim), nn.LeakyReLU()])
@@ -108,7 +118,7 @@ class Down_Model(nn.Module):
         return x
 
 class Up_Model(nn.Module):
-    def __init__(self, in_dim, out_dim, hidden_dim=400, num_hidden_layers=1):
+    def __init__(self, in_dim, out_dim, hidden_dim=400, num_hidden_layers=2):
         super(Up_Model, self).__init__()
         
         self.layers = nn.ModuleList([nn.Linear(in_dim, hidden_dim), nn.LeakyReLU()])
