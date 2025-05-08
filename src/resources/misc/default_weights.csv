@@ -4,12 +4,12 @@ Knee Angle Error,33.10693
 Hip Angle Error,66.58031
 Arm Angle Error,93.05156
 Cosine Distance to Embedding,0.0017902623
-Mass,2.973422
-Planar Compliance,2.3515267
-Transverse Compliance,1.9256104
-Eccentric Compliance,2.042192
-Planar Safety Factor,1.0254939
-Eccentric Safety Factor,0.827871
+Mass,4.6775794
+Planar Compliance,1.5399282
+Transverse Compliance,1.2587206
+Eccentric Compliance,1.3578702
+Planar Safety Factor,0.89094776
+Eccentric Safety Factor,0.6534921
 Saddle height too small,138.09695
 Seat post too short,150.86607
 Head tube lower extension too great,92.41644
@@ -22,4 +22,4 @@ Down tube must reach head tube,166.42728
 The pedal shouldn't intersect the front wheel,70.76335
 The crank shouldn't hit the ground when it is in its lower position,113.05473
 RGB value should be less than 255,404.05246
-Predicted Frame Validity,0.49887657
+Predicted Frame Validity,0.49877277

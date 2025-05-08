@@ -58,6 +58,9 @@ def get_composite_score_fn(scaler, columns, constrant_vs_objective_weight = 10.0
     assert weights.min() > 0, "Ref point should be greater than 0"
 
     def composite_score_fn(x, continuous_condition, evaluator = evaluator, scaler = scaler):
+        #print if there are any NaN values in x
+        if torch.isnan(x).any():
+            print("NaN values in x")
         x = scaler.unscale(x)
         condition = parse_continuous_condition(continuous_condition)
         eval_scores = evaluator(x, condition)
@@ -65,13 +68,18 @@ def get_composite_score_fn(scaler, columns, constrant_vs_objective_weight = 10.0
         objective_scores = scaled_scores[:, isobjective]
         constraint_scores_raw = scaled_scores[:, ~isobjective]
         constraint_scores = piecewise_constraint_score(constraint_scores_raw, constraint_falloff)
-
         total_scores = torch.sum(objective_scores, dim=1) + torch.sum(constraint_scores, dim=1) * constrant_vs_objective_weight
-        composite_scores = total_scores / (len(objective_scores) + len(constraint_scores) * constrant_vs_objective_weight)
+        composite_scores = total_scores / constrant_vs_objective_weight
 
         quality_scores = 1/composite_scores
         # print("Quality scores: ", quality_scores)
-        return quality_scores
+        if torch.isnan(quality_scores).any():
+            print("NaN values in quality scores")
+
+        mean_comp_scores = torch.mean(composite_scores)
+        constraint_satisfaction_rate = torch.mean(torch.all(constraint_scores > 0, dim=1).float())
+        report = {"CSR": constraint_satisfaction_rate, "MCS": mean_comp_scores}
+        return quality_scores, report
 
     return composite_score_fn
 
@@ -104,7 +112,7 @@ def get_diversity_loss_fn(scaler:TorchScaler, columns, diversity_weight=0.1, sco
 
     def diversity_loss_fn(x, condition, diversity_weight=diversity_weight, score_weight=score_weight):
         
-        scores = composite_score_fn(x, condition)
+        scores, report= composite_score_fn(x, condition)
 
         # Initialize the total loss
         total_loss = 0.0
@@ -131,22 +139,33 @@ def get_diversity_loss_fn(scaler:TorchScaler, columns, diversity_weight=0.1, sco
             Q = torch.pow(Q, score_weight)
             L = S * Q
 
+            L = (L + L.T) / 2.0
+
+            L_stable = L + 1e-6 * torch.eye(L.size(0), device=L.device)  
+
             # Compute the eigenvalues of the similarity matrix for the batch
             try:
-                eig_val = torch.linalg.eigvalsh(L)
+                eig_val = torch.linalg.eigvalsh(L_stable)
             except:
                 print(f"Eigenvalue computation failed for batch with size {batch_size}")
                 eig_val = torch.ones(x_batch.size(0), device=x.device)
+            if torch.isnan(eig_val).any():
+                print("NaNs detected in eig_val")
+            # if (eig_val <= 0).any():
+            #     print("Nonpositive eigenvalues:", eig_val)
             # Compute the loss for the batch as the negative mean log of the eigenvalues
-            batch_loss = -torch.mean(torch.log(torch.clamp(eig_val, min=1e-9)))
+            if torch.isinf(torch.log(eig_val)).any():
+                print("Log produced inf! Min/max eig_val:", eig_val.min().item(), eig_val.max().item())
+
+            batch_loss = -torch.mean(torch.log(torch.clamp(eig_val, min=1e-6, max=1e6)))
 
             total_loss += batch_loss
 
             # Update the start index for the next batch
             start_idx = end_idx
         # Compute the final loss by averaging across batches
-        loss = total_loss / len(batch_sizes)
-        return loss * diversity_weight
+        loss = total_loss / len(batch_sizes)* diversity_weight
+        return loss, report
     return diversity_loss_fn
 
 class Down_Model(nn.Module):
@@ -214,13 +233,17 @@ def GAN_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
     output = D(fake_data_and_condition).view(-1)
     L_G = criterion(output, real_label)
 
-    L_aux = auxiliary_loss_fn(fake_data, cond_batch)
+    L_aux, rep= auxiliary_loss_fn(fake_data, cond_batch)
     L_G_tot = L_G + L_aux
 
     L_G_tot.backward()
+
+    torch.nn.utils.clip_grad_norm_(G.parameters(), max_norm=20)
+
     G_opt.step()
 
     report = {"L_D_real": L_D_real.item(), "L_D_fake": L_D_fake.item(), "L_G": L_G.item(), "L_aux": L_aux.item()}
+    report.update(rep)
     return report
 
 
@@ -251,16 +274,25 @@ def VAE_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
     L_R = nn.MSELoss()(reconstructed, data_batch)
     L_KL = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) / data_batch.size(0)
 
-    L_aux = auxiliary_loss_fn(reconstructed, cond_batch)
+    L_aux, rep = auxiliary_loss_fn(reconstructed, cond_batch)
 
     L_tot = alpha * L_KL + L_R + L_aux
 
     L_tot.backward()
 
+    # total_norm_D = torch.sqrt(sum(p.grad.norm()**2 for p in D.parameters() if p.grad is not None))
+    # total_norm_G = torch.sqrt(sum(p.grad.norm()**2 for p in G.parameters() if p.grad is not None))
+    # print(f"Gradient norm for D: {total_norm_D.item():.4f}")
+    # print(f"Gradient norm for G: {total_norm_G.item():.4f}")
+
+    torch.nn.utils.clip_grad_norm_(D.parameters(), max_norm=20)
+    torch.nn.utils.clip_grad_norm_(G.parameters(), max_norm=20)
+
     D_opt.step()
     G_opt.step()
     
     report = {"L_KL": L_KL.item(), "L_R": L_R.item(), "L_tot": L_tot.item(), "L_aux": L_aux.item()}
+    report.update(rep)
     return report
 
 
@@ -388,37 +420,35 @@ def train(D, G, D_opt, G_opt, loader, num_steps, batch_size, noise_dim, train_st
     return D, G
 
 
-# def get_DDPM_generate_cond(scheduler, data_dim, batch_size=64):
-#     def DDPM_generate_cond(D, G, cond_batch, latent_dim, device, batch_size=batch_size):
-#         results = []
-#         #TODO incorporate guidance and conditioning
-#         for start_idx in range(0, numgen, batch_size):
-#             end_idx = min(start_idx + batch_size, numgen)
-#             current_batch_size = end_idx - start_idx
+def get_DDPM_generate_cond(scheduler, data_dim, batch_size=64):
+    def DDPM_generate_cond(D, G, cond_batch, latent_dim, device, batch_size=batch_size):
+        results = []
+        numgen = cond_batch.shape[0]
+        for start_idx in range(0, numgen, batch_size):
+            end_idx = min(start_idx + batch_size, numgen)
+            current_batch_size = end_idx - start_idx
 
-#             x = torch.randn(current_batch_size, data_dim).to(device)
+            x = torch.randn(current_batch_size, data_dim).to(device)
 
-#             class_label = torch.ones((current_batch_size, 1), device=device)
+            for t in reversed(range(scheduler.num_timesteps)):
+                t_embedded = torch.full((current_batch_size, 1), t, device=device).float() / scheduler.num_timesteps
+                x_input = torch.cat([x, cond_batch, t_embedded], dim=-1)
 
-#             for t in reversed(range(scheduler.num_timesteps)):
-#                 t_embedded = torch.full((current_batch_size, 1), t, device=device).float() / scheduler.num_timesteps
-#                 x_input = torch.cat([x, class_label, t_embedded], dim=-1)
+                with torch.no_grad():
+                    noise_pred = D(x_input)
 
-#                 with torch.no_grad():
-#                     noise_pred = D(x_input)
+                beta_t = scheduler.betas[t].to(device)  # Variance (beta_t)
+                alpha_t = scheduler.alphas[t].to(device)  # Current alpha_t (not cumulative)
+                sqrt_alpha_t = torch.sqrt(alpha_t).unsqueeze(-1)  # sqrt(alpha_t)
+                sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(1 - cumprod(alpha))
 
-#                 beta_t = scheduler.betas[t].to(device)  # Variance (beta_t)
-#                 alpha_t = scheduler.alphas[t].to(device)  # Current alpha_t (not cumulative)
-#                 sqrt_alpha_t = torch.sqrt(alpha_t).unsqueeze(-1)  # sqrt(alpha_t)
-#                 sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(1 - cumprod(alpha))
+                z = torch.randn_like(x) if t > 0 else 0  # Add noise only if t > 0
+                x = (1 / sqrt_alpha_t) * (x - ((1 - alpha_t) / sqrt_one_minus_alpha_cumprod_t) * noise_pred) + torch.sqrt(beta_t) * z
 
-#                 z = torch.randn_like(x) if t > 0 else 0  # Add noise only if t > 0
-#                 x = (1 / sqrt_alpha_t) * (x - ((1 - alpha_t) / sqrt_one_minus_alpha_cumprod_t) * noise_pred) + torch.sqrt(beta_t) * z
+            results.append(x)
 
-#             results.append(x)
-
-#         return torch.concat(results, axis=0)
-#     return DDPM_generate_cond
+        return torch.concat(results, axis=0)
+    return DDPM_generate_cond
 
 # def get_DDPM_generate_guidance(scheduler, data_dim, guidance_scale=1.0, batch_size=64):
 #     def DDPM_generate_guidance(D, G, cond_batch, latent_dim, device, batch_size=batch_size):

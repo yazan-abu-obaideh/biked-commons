@@ -373,6 +373,37 @@ class UsabilityEvaluator(EvaluationFunction):
             predictions = predictions - 0.5 #TODO confirm that 0=valid
             return torch.tensor(predictions, dtype=self.dtype, device=self.device)
 
+
+class PreprocessingFunction(ABC):
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def variable_names(self) -> List[str]:
+        pass
+
+    @abstractmethod
+    def process(self, designs: torch.Tensor) -> torch.Tensor:
+        pass
+    
+
+class clip_bools_to_0_1(PreprocessingFunction):
+    def __init__(self, device="cpu"):
+        self.device = device
+
+    def variable_names(self) -> List[str]:
+        return ordered_columns.oh_bool_columns
+
+    def process(self, designs: torch.Tensor) -> torch.Tensor:
+        # Clip the values to be between 0 and 1
+        designs = torch.clip(designs, min=0, max=1)
+        return designs
+    
+class normalize_onehot(PreprocessingFunction):
+    #TODO
+
+
+
     
 def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], column_names: List[str], device="cpu"):
 
@@ -385,12 +416,23 @@ def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], c
         all_return_names.extend(evaluation_function.return_names())
         all_return_types.extend(evaluation_function.return_types())
 
+    preprocessing_fns = [clip_bools_to_0_1(device=device)]
+
     def evaluate_tensor(designs: torch.Tensor, conditioning={}) -> torch.Tensor:
         n = designs.shape[0]
         total_outputs = sum(len(evaluation_function.return_names()) for evaluation_function in evaluation_functions)
         results_tensor = torch.zeros((n, total_outputs), dtype=torch.float32, device=designs.device)
 
         current_col = 0
+        for preprocessing_fn in preprocessing_fns:
+            var_indices = [column_names.index(var) for var in preprocessing_fn.variable_names()]
+            sliced_designs = designs[:, var_indices]
+            processed = preprocessing_fn.process(sliced_designs)
+
+            updated = designs.clone()
+            updated[:, var_indices] = processed
+            designs = updated
+
         for evaluation_function in evaluation_functions:
             var_indices = [column_names.index(var) for var in evaluation_function.variable_names()]
             sliced_designs = designs[:, var_indices]
@@ -430,13 +472,13 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
 def get_standard_evaluations(device) -> List[EvaluationFunction]:
 
     StandardEvaluations = [
-        # UsabilityEvaluator(target_type='cont', device=device),
-        # AeroEvaluator(device=device),
-        # ErgonomicsEvaluator(device=device),
-        # AestheticsEvaluator(mode="Embedding", batch_size=64, device=device),
+        UsabilityEvaluator(target_type='cont', device=device),
+        AeroEvaluator(device=device),
+        ErgonomicsEvaluator(device=device),
+        AestheticsEvaluator(mode="Embedding", batch_size=64, device=device),
         StructuralEvaluator(device=device),
-        # ValidationEvaluator(device=device),
-        # FrameValidityEvaluator(device=device)
+        ValidationEvaluator(device=device),
+        FrameValidityEvaluator(device=device)
     ]
 
     return StandardEvaluations

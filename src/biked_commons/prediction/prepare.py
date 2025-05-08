@@ -37,7 +37,7 @@ def prepare_bike_bench():
 
     #multiply columns_to_scale with log normal samples
     data_subset = data_oh[columns_to_scale].copy()
-    new_values = data_subset.values * log_normal_samples
+    new_values = data_subset.values * log_normal_samples * 2.0
     data_oh[columns_to_scale] = new_values
     data_oh.to_csv(split_datasets_path("bike_bench.csv"))
 
