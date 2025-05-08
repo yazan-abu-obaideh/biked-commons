@@ -347,39 +347,50 @@ class NoiseScheduler:
 
 def DDPM_step_cond_wrapper(scheduler):
     def DDPM_step_cond(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size, device, auxiliary_loss_fn):
-        # P_labels = torch.ones(data_batch.size(0), 1, device=device)  # Class 1 for P_batch
-        
-        # data_batch = torch.cat([P_batch, N_batch], dim=0) 
-        # labels = torch.cat([P_labels, N_labels], dim=0)
-
-        # perm = torch.randperm(data_batch.size(0))
-        # data_batch = data_batch[perm]
-        # labels = labels[perm]
-
+        # sample random t and noise
         t = torch.randint(0, scheduler.num_timesteps, (data_batch.size(0),), device=device)
-        noise = torch.randn_like(data_batch).to(device)
+        noise = torch.randn_like(data_batch, device=device)
 
-        sqrt_alpha_cumprod_t = scheduler.sqrt_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(alpha_t_bar)
-        sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(1 - alpha_t_bar)
-
+        # q(x_t | x_0)
+        sqrt_alpha_cumprod_t = scheduler.sqrt_alpha_cumprod[t].unsqueeze(-1).to(device)
+        sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)
         x_t = sqrt_alpha_cumprod_t * data_batch + sqrt_one_minus_alpha_cumprod_t * noise
 
+        # embed timestep and concat condition
         t_embedded = t.unsqueeze(-1).float() / scheduler.num_timesteps
-
         x_input = torch.cat([x_t, cond_batch, t_embedded], dim=-1)
 
+        # predict noise
         noise_pred = D(x_input)
 
-        beta_t = scheduler.betas[t].unsqueeze(-1).to(device)  # Variance (beta_t)
-        loss_weights = (1 / beta_t) / (1 / beta_t).mean()  # Normalize loss weights
-        loss = (loss_weights * nn.MSELoss(reduction="none")(noise_pred, noise)).mean()
+        # standard DDPM loss
+        beta_t = scheduler.betas[t].unsqueeze(-1).to(device)
+        loss_weights = (1 / beta_t) / (1 / beta_t).mean()
+        base_loss = (loss_weights * nn.MSELoss(reduction="none")(noise_pred, noise)).mean()
 
-        # Backpropagation and optimization
+        # reconstruct x0 and compute auxiliary loss
+        x0_pred = (x_t - sqrt_one_minus_alpha_cumprod_t * noise_pred) / sqrt_alpha_cumprod_t
+        L_aux, rep = auxiliary_loss_fn(x0_pred, cond_batch)
+
+        # total loss = DDPM + auxiliary
+        total_loss = base_loss + L_aux
+
+        # backprop & step
         D.zero_grad()
-        loss.backward()
+        total_loss.backward()
+
+        total_norm_D = torch.sqrt(sum(p.grad.norm()**2 for p in D.parameters() if p.grad is not None))
+        print(f"Gradient norm for D: {total_norm_D.item():.4f}")
         D_opt.step()
 
-        return {"loss": loss.item()}
+        # return both losses and any extra metrics
+        report = {
+            "loss": base_loss.item(),
+            "L_aux": L_aux.item(),
+        }
+        report.update(rep)
+        return report
+
     return DDPM_step_cond
 
 
@@ -551,15 +562,14 @@ def train_model(data, model_type, train_params, auxiliary_loss_fn, device):
     #     D_out = data_dim
     #     G_in = 1 #unused
     #     G_out = 1 #unused
-    # elif model_type in ["DDPM_conditional"]:
-    #     train_step = DDPM_step_cond_wrapper(scheduler)
-    #     generate_fn = get_DDPM_generate_cond(scheduler, data_dim, batch_size=batch_size)
-    #     scheduler = NoiseScheduler(1000, device = device)
-    #     generate_fn = get_DDPM_generate_cond(scheduler, data_dim, batch_size=batch_size)
-    #     D_in = data_dim + 2
-    #     D_out = data_dim
-    #     G_in = 1 #unused
-    #     G_out = 1 #unused
+    elif model_type in ["DDPM_conditional"]:
+        scheduler = NoiseScheduler(1000, device = device)
+        train_step = DDPM_step_cond_wrapper(scheduler)
+        generate_fn = get_DDPM_generate_cond(scheduler, data_dim, batch_size=batch_size)
+        D_in = data_dim + cond_dim + 1
+        D_out = data_dim
+        G_in = 1 #unused
+        G_out = 1 #unused
     # else:
     #     raise ValueError("Invalid model_type")
 

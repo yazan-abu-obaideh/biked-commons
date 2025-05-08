@@ -1,25 +1,25 @@
-Min Objective Score: Usability Score - 0 to 1,0.07828730344772339
-Min Objective Score: Drag Force,13.024118423461914
+Min Objective Score: Usability Score - 0 to 1,0.07511574029922485
+Min Objective Score: Drag Force,8.824583053588867
 Min Objective Score: Knee Angle Error,0.0
-Min Objective Score: Hip Angle Error,33.50567626953125
-Min Objective Score: Arm Angle Error,21.408309936523438
-Min Objective Score: Cosine Similarity to Embedding,0.003090769052505493
-Min Objective Score: Mass,3.9413907527923584
+Min Objective Score: Hip Angle Error,30.262306213378906
+Min Objective Score: Arm Angle Error,1.4048843383789062
+Min Objective Score: Cosine Distance to Embedding,0.0014441907405853271
+Min Objective Score: Mass,4.244184494018555
 Min Objective Score: Planar Compliance,0.0
 Min Objective Score: Transverse Compliance,0.0
 Min Objective Score: Eccentric Compliance,0.0
-Mean Objective Score: Usability Score - 0 to 1,0.42776715755462646
-Mean Objective Score: Drag Force,22.28084945678711
-Mean Objective Score: Knee Angle Error,30.66603660583496
-Mean Objective Score: Hip Angle Error,80.64990234375
-Mean Objective Score: Arm Angle Error,89.91342163085938
-Mean Objective Score: Cosine Similarity to Embedding,0.010959186591207981
-Mean Objective Score: Mass,9.507765769958496
-Mean Objective Score: Planar Compliance,0.12912645936012268
-Mean Objective Score: Transverse Compliance,0.6146203279495239
-Mean Objective Score: Eccentric Compliance,0.4152599573135376
-Constraint Violation Rate: Planar Safety Factor,0.45454545454545453
-Constraint Violation Rate: Eccentric Safety Factor,0.10909090909090909
+Mean Objective Score: Usability Score - 0 to 1,0.46737128496170044
+Mean Objective Score: Drag Force,22.015443801879883
+Mean Objective Score: Knee Angle Error,31.46092414855957
+Mean Objective Score: Hip Angle Error,63.669559478759766
+Mean Objective Score: Arm Angle Error,77.30171966552734
+Mean Objective Score: Cosine Distance to Embedding,0.006090350449085236
+Mean Objective Score: Mass,11.824931144714355
+Mean Objective Score: Planar Compliance,0.19523654878139496
+Mean Objective Score: Transverse Compliance,0.4082760214805603
+Mean Objective Score: Eccentric Compliance,0.3477897644042969
+Constraint Violation Rate: Planar Safety Factor,0.03636363636363636
+Constraint Violation Rate: Eccentric Safety Factor,0.01818181818181818
 Constraint Violation Rate: Saddle height too small,0.0
 Constraint Violation Rate: Seat post too short,0.0
 Constraint Violation Rate: Head tube lower extension too great,0.0
@@ -33,8 +33,8 @@ Constraint Violation Rate: The pedal shouldn't intersect the front wheel,0.0
 Constraint Violation Rate: The crank shouldn't hit the ground when it is in its lower position,0.0
 Constraint Violation Rate: RGB value should be less than 255,0.0
 Constraint Violation Rate: Predicted Frame Validity,0.0
-Mean Constraint Violation Magnitude: Planar Safety Factor,0.22758620977401733
-Mean Constraint Violation Magnitude: Eccentric Safety Factor,0.024733060970902443
+Mean Constraint Violation Magnitude: Planar Safety Factor,0.0007109381840564311
+Mean Constraint Violation Magnitude: Eccentric Safety Factor,0.027272727340459824
 Mean Constraint Violation Magnitude: Saddle height too small,0.0
 Mean Constraint Violation Magnitude: Seat post too short,0.0
 Mean Constraint Violation Magnitude: Head tube lower extension too great,0.0
