@@ -131,7 +131,7 @@ def decode_to_mixed(encoded_df: pd.DataFrame) -> pd.DataFrame:
     """
     Reverse the one‐hot encoding done by encode_clips:
     - For each original categorical column, find all "<col> OHCLASS: *" dummies,
-      take argmax (the position of the 1), strip off the prefix, and restore
+      take argmax (the position of the highest value), strip off the prefix, and restore
       the category string.
     - Round the float boolean columns back to 0/1 and cast to bool.
     """
@@ -140,15 +140,13 @@ def decode_to_mixed(encoded_df: pd.DataFrame) -> pd.DataFrame:
     # 1) decode each categorical variable
     for col in ONE_HOT_ENCODED_CLIPS_COLUMNS:
         pref = f"{col}{PREFIX_SEP}"
-        # gather the dummy cols for this variable
         dummy_cols = [c for c in out.columns if c.startswith(pref)]
         if not dummy_cols:
             continue
 
-        # idxmax gives the column name with the highest value (i.e., the 1)
+        # idxmax on the raw floats picks the column with the highest value
         restored = (
             out[dummy_cols]
-            .astype(int)
             .idxmax(axis=1)
             .str.replace(pref, "", n=1, regex=False)
         )
@@ -158,12 +156,9 @@ def decode_to_mixed(encoded_df: pd.DataFrame) -> pd.DataFrame:
 
     # 2) round boolean floats back to bool
     for col in BOOLEAN_COLUMNS:
-        if col in out.columns:
-            if col in FAKE_BOOLEAN_COLUMNS:
-                pass
-            else:
-                out[col] = out[col].round().astype(int).astype(bool)
-    
+        if col in out.columns and col not in FAKE_BOOLEAN_COLUMNS:
+            out[col] = out[col].round().astype(int).astype(bool)
 
     return out
+
 

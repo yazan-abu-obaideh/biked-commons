@@ -213,7 +213,7 @@ class MeanConstraintViolationMagnitude(ScoringFunction):
 
 def construct_scorer(scoring_functions: List[ScoringFunction], evaluation_functions: List[EvaluationFunction], column_names: List[str], device: str = "cpu") -> callable:
 
-    evaluator, requirement_names, requirement_types = construct_tensor_evaluator(evaluation_functions, column_names, device)
+    evaluator, requirement_names, requirement_types = construct_tensor_evaluator(evaluation_functions, column_names, device=device)
     requirement_names = np.array(requirement_names)
     isobjective = torch.tensor(requirement_types) == 1
     objective_names = requirement_names[isobjective]
