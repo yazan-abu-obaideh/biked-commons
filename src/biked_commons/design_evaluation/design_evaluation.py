@@ -413,18 +413,20 @@ class normalize_onehot(PreprocessingFunction):
         return self._variable_names
 
     def process(self, designs: torch.Tensor) -> torch.Tensor:
-        # Clone to avoid in-place modification issues
-        normalized = designs.clone()
+        # List to hold processed group slices
+        normalized_groups = []
 
         current_col = 0
         for group in self.groups:
             num_cols = len(group)
-            group_slice = normalized[:, current_col:current_col + num_cols]
-            group_sum = group_slice.sum(dim=1, keepdim=True).clamp(min=1e-8)  # avoid divide-by-zero
-            normalized[:, current_col:current_col + num_cols] = group_slice / group_sum
+            group_slice = designs[:, current_col:current_col + num_cols]
+            group_sum = group_slice.sum(dim=1, keepdim=True).clamp(min=1e-8)
+            normalized_group = group_slice / group_sum
+            normalized_groups.append(normalized_group)
             current_col += num_cols
 
-        return normalized
+        # Concatenate normalized groups along feature dimension
+        return torch.cat(normalized_groups, dim=1)
 
 def get_standard_preprocessing(device):
     return [clip_bools_to_0_1(device=device),
