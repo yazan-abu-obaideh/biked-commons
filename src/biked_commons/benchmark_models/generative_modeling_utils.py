@@ -77,7 +77,7 @@ def get_composite_score_fn(scaler, columns, constrant_vs_objective_weight = 10.0
             print("NaN values in quality scores")
 
         mean_comp_scores = torch.mean(composite_scores)
-        constraint_satisfaction_rate = torch.mean(torch.all(constraint_scores > 0, dim=1).float())
+        constraint_satisfaction_rate = torch.mean(torch.all(constraint_scores_raw <= 0, dim=1).float())
         report = {"CSR": constraint_satisfaction_rate, "MCS": mean_comp_scores}
         return quality_scores, report
 

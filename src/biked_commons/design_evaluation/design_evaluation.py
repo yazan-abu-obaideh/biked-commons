@@ -400,12 +400,40 @@ class clip_bools_to_0_1(PreprocessingFunction):
         return designs
     
 class normalize_onehot(PreprocessingFunction):
-    #TODO
+    def __init__(self, device="cpu"):
+        self.device = device
 
+        # Define groups of one-hot column names
+        self.groups = ordered_columns.oh_columns
+
+        # Flatten all variable names for indexing
+        self._variable_names = [col for group in self.groups for col in group]
+
+    def variable_names(self) -> List[str]:
+        return self._variable_names
+
+    def process(self, designs: torch.Tensor) -> torch.Tensor:
+        # Clone to avoid in-place modification issues
+        normalized = designs.clone()
+
+        current_col = 0
+        for group in self.groups:
+            num_cols = len(group)
+            group_slice = normalized[:, current_col:current_col + num_cols]
+            group_sum = group_slice.sum(dim=1, keepdim=True).clamp(min=1e-8)  # avoid divide-by-zero
+            normalized[:, current_col:current_col + num_cols] = group_slice / group_sum
+            current_col += num_cols
+
+        return normalized
+
+def get_standard_preprocessing(device):
+    return [clip_bools_to_0_1(device=device),
+            normalize_onehot(device=device)]
 
 
     
-def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], column_names: List[str], device="cpu"):
+def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], column_names: List[str], preprocessing_fn_set = get_standard_preprocessing, device="cpu"):
+    preprocessing_fns = preprocessing_fn_set(device)
 
     column_names = list(column_names)
 
@@ -415,8 +443,6 @@ def construct_tensor_evaluator(evaluation_functions: List[EvaluationFunction], c
     for evaluation_function in evaluation_functions:
         all_return_names.extend(evaluation_function.return_names())
         all_return_types.extend(evaluation_function.return_types())
-
-    preprocessing_fns = [clip_bools_to_0_1(device=device)]
 
     def evaluate_tensor(designs: torch.Tensor, conditioning={}) -> torch.Tensor:
         n = designs.shape[0]
@@ -466,6 +492,8 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
         return results_df, return_types
 
     return evaluate_dataframe
+
+
 
 
 

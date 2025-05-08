@@ -73,6 +73,60 @@ bike_bench_columns = ['CS textfield', 'BB textfield', 'Stack', 'Head angle',
        'Seat tube type OHCLASS: 0', 'Seat tube type OHCLASS: 1',
        'Seat tube type OHCLASS: 2']
 
+oh_columns = [
+            [
+                "MATERIAL OHCLASS: ALUMINIUM",
+                "MATERIAL OHCLASS: BAMBOO",
+                "MATERIAL OHCLASS: CARBON",
+                "MATERIAL OHCLASS: OTHER",
+                "MATERIAL OHCLASS: STEEL",
+                "MATERIAL OHCLASS: TITANIUM",
+            ],
+            [
+                "Dropout spacing style OHCLASS: 0",
+                "Dropout spacing style OHCLASS: 1",
+                "Dropout spacing style OHCLASS: 2",
+                "Dropout spacing style OHCLASS: 3",
+            ],
+            [
+                "Head tube type OHCLASS: 0",
+                "Head tube type OHCLASS: 1",
+                "Head tube type OHCLASS: 2",
+                "Head tube type OHCLASS: 3",
+            ],
+            [
+                "RIM_STYLE front OHCLASS: DISC",
+                "RIM_STYLE front OHCLASS: SPOKED",
+                "RIM_STYLE front OHCLASS: TRISPOKE",
+            ],
+            [
+                "RIM_STYLE rear OHCLASS: DISC",
+                "RIM_STYLE rear OHCLASS: SPOKED",
+                "RIM_STYLE rear OHCLASS: TRISPOKE",
+            ],
+            [
+                "Handlebar style OHCLASS: 0",
+                "Handlebar style OHCLASS: 1",
+                "Handlebar style OHCLASS: 2",
+            ],
+            [
+                "Stem kind OHCLASS: 0",
+                "Stem kind OHCLASS: 1",
+                "Stem kind OHCLASS: 2",
+            ],
+            [
+                "Fork type OHCLASS: 0",
+                "Fork type OHCLASS: 1",
+                "Fork type OHCLASS: 2",
+            ],
+            [
+                "Seat tube type OHCLASS: 0",
+                "Seat tube type OHCLASS: 1",
+                "Seat tube type OHCLASS: 2",
+            ]
+        ]
+
+
 oh_bool_columns = [
     "MATERIAL OHCLASS: ALUMINIUM",
     "MATERIAL OHCLASS: BAMBOO",
