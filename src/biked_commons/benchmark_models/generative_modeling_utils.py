@@ -102,7 +102,7 @@ def get_uneven_batch_sizes(total_data_points, batch_size):
 
     # Distribute the remainder across the batches
     for i in range(remainder):
-        batch_sizes[i] += 1
+        batch_sizes[i%num_batches] += 1
 
     return batch_sizes
 
@@ -233,8 +233,15 @@ def GAN_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
     output = D(fake_data_and_condition).view(-1)
     L_G = criterion(output, real_label)
 
-    L_aux, rep= auxiliary_loss_fn(fake_data, cond_batch)
-    L_G_tot = L_G + L_aux
+    if auxiliary_loss_fn is not None:
+        L_aux, rep= auxiliary_loss_fn(fake_data, cond_batch)
+        L_G_tot = L_G + L_aux
+
+        report = {"L_D_real": L_D_real.item(), "L_D_fake": L_D_fake.item(), "L_G": L_G.item(), "L_aux": L_aux.item()}
+        report.update(rep)
+    else:
+        L_G_tot = L_G
+        report = {"L_D_real": L_D_real.item(), "L_D_fake": L_D_fake.item(), "L_G": L_G.item()}
 
     L_G_tot.backward()
 
@@ -242,8 +249,6 @@ def GAN_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
 
     G_opt.step()
 
-    report = {"L_D_real": L_D_real.item(), "L_D_fake": L_D_fake.item(), "L_G": L_G.item(), "L_aux": L_aux.item()}
-    report.update(rep)
     return report
 
 
@@ -274,9 +279,17 @@ def VAE_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
     L_R = nn.MSELoss()(reconstructed, data_batch)
     L_KL = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp()) / data_batch.size(0)
 
-    L_aux, rep = auxiliary_loss_fn(reconstructed, cond_batch)
+    if auxiliary_loss_fn is not None:
+        L_aux, rep = auxiliary_loss_fn(reconstructed, cond_batch)
 
-    L_tot = alpha * L_KL + L_R + L_aux
+        L_tot = alpha * L_KL + L_R + L_aux
+
+        report = {"L_KL": L_KL.item(), "L_R": L_R.item(), "L_tot": L_tot.item(), "L_aux": L_aux.item()}
+        report.update(rep)
+    else:
+        L_tot = alpha * L_KL + L_R
+
+        report = {"L_KL": L_KL.item(), "L_R": L_R.item(), "L_tot": L_tot.item()}
 
     L_tot.backward()
 
@@ -291,8 +304,6 @@ def VAE_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
     D_opt.step()
     G_opt.step()
     
-    report = {"L_KL": L_KL.item(), "L_R": L_R.item(), "L_tot": L_tot.item(), "L_aux": L_aux.item()}
-    report.update(rep)
     return report
 
 
@@ -350,7 +361,6 @@ def DDPM_step_cond_wrapper(scheduler):
         # sample random t and noise
         t = torch.randint(0, scheduler.num_timesteps, (data_batch.size(0),), device=device)
         noise = torch.randn_like(data_batch, device=device)
-
         # q(x_t | x_0)
         sqrt_alpha_cumprod_t = scheduler.sqrt_alpha_cumprod[t].unsqueeze(-1).to(device)
         sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)
@@ -368,27 +378,48 @@ def DDPM_step_cond_wrapper(scheduler):
         loss_weights = (1 / beta_t) / (1 / beta_t).mean()
         base_loss = (loss_weights * nn.MSELoss(reduction="none")(noise_pred, noise)).mean()
 
+
         # reconstruct x0 and compute auxiliary loss
         x0_pred = (x_t - sqrt_one_minus_alpha_cumprod_t * noise_pred) / sqrt_alpha_cumprod_t
-        L_aux, rep = auxiliary_loss_fn(x0_pred, cond_batch)
 
-        # total loss = DDPM + auxiliary
-        total_loss = base_loss + L_aux
+        
+        if auxiliary_loss_fn is not None:
+            thresh = int(0.1 * scheduler.num_timesteps)
+            valid = (t < thresh)               # torch.BoolTensor, shape (batch_size,)
 
-        # backprop & step
+            # 3) only compute aux on that subset
+            if valid.any():
+                x0_sub, cond_sub = x0_pred[valid], cond_batch[valid]
+                L_aux, rep = auxiliary_loss_fn(x0_sub, cond_sub)
+            else:
+                L_aux = torch.tensor(0.0, device=device)
+                rep = {}
+
+            # total loss = DDPM + auxiliary
+            total_loss = base_loss + L_aux
+
+            report = {
+            "loss": base_loss.item(),
+            "L_aux": L_aux.item(),
+                }
+            report.update(rep)
+        else:
+            total_loss = base_loss
+            report = {
+                "loss": base_loss.item(),
+            }
+
         D.zero_grad()
         total_loss.backward()
 
-        total_norm_D = torch.sqrt(sum(p.grad.norm()**2 for p in D.parameters() if p.grad is not None))
-        print(f"Gradient norm for D: {total_norm_D.item():.4f}")
-        D_opt.step()
+        # total_norm_D = torch.sqrt(sum(p.grad.norm()**2 for p in D.parameters() if p.grad is not None))
+        # print(f"Gradient norm for D: {total_norm_D.item():.4f}")
 
-        # return both losses and any extra metrics
-        report = {
-            "loss": base_loss.item(),
-            "L_aux": L_aux.item(),
-        }
-        report.update(rep)
+        # torch.nn.utils.clip_grad_norm_(G.parameters(), max_norm=20)
+        
+        D_opt.step()
+        
+        
         return report
 
     return DDPM_step_cond
@@ -416,7 +447,7 @@ class ReusableDataLoader:
         batch_indices = queued[:self.batch_size]  # Get the batch of the correct size
         return torch.stack([self.dataset[i][0] for i in batch_indices])
 
-def train(D, G, D_opt, G_opt, loader, num_steps, batch_size, noise_dim, train_step_fn, device, auxiliary_loss_fn):
+def train(D, G, D_opt, G_opt, loader, num_steps, batch_size, noise_dim, train_step_fn, device, auxiliary_loss_fn, auxiliary_loss_delay=0):
     # Loss function
     
     steps_range = trange(num_steps, position=0, leave=True)
@@ -425,7 +456,12 @@ def train(D, G, D_opt, G_opt, loader, num_steps, batch_size, noise_dim, train_st
         noise_batch = torch.randn(batch_size, noise_dim).to(device)
         cond_batch = sample_continuous(batch_size, split="train", randomize=True).to(device)
 
-        report = train_step_fn(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size, device, auxiliary_loss_fn)
+        if step < auxiliary_loss_delay*num_steps:
+            effective_auxiliary_loss_fn = None
+        else:
+            effective_auxiliary_loss_fn = auxiliary_loss_fn
+
+        report = train_step_fn(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size, device, effective_auxiliary_loss_fn)
         postfix = {key: "{:.4f}".format(value) for key, value in report.items()}
         steps_range.set_postfix(postfix)
     return D, G
@@ -528,7 +564,7 @@ def GAN_generate(D, G, cond_batch, noise_dim, device):
     return generated_data
 
 def train_model(data, model_type, train_params, auxiliary_loss_fn, device):
-    batch_size, disc_lr, gen_lr, noise_dim, num_epochs, n_hidden, layer_size= train_params
+    batch_size, disc_lr, gen_lr, noise_dim, num_epochs, auxiliary_loss_delay, n_hidden, layer_size= train_params
 
     
 
@@ -591,6 +627,6 @@ def train_model(data, model_type, train_params, auxiliary_loss_fn, device):
         num_steps = -num_epochs #hacky way to specify fixed number of steps rather than epochs
     
 
-    train(D, G, D_opt, G_opt, loader, num_steps, batch_size, noise_dim, train_step, device, auxiliary_loss_fn)
+    train(D, G, D_opt, G_opt, loader, num_steps, batch_size, noise_dim, train_step, device, auxiliary_loss_fn, auxiliary_loss_delay)
 
     return D, G, generate_fn
