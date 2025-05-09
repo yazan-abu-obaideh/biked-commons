@@ -5,7 +5,6 @@ import pandas as pd
 # columns to one‐hot encode
 ONE_HOT_ENCODED_CLIPS_COLUMNS: List[str] = [
     'MATERIAL',
-    'Dropout spacing style',
     'Head tube type',
     'RIM_STYLE front',
     'RIM_STYLE rear',
@@ -23,12 +22,6 @@ ALL_CATEGORIES = {
         'OTHER',
         'STEEL',
         'TITANIUM'
-    ],
-    'Dropout spacing style': [
-        '0',
-        '1',
-        '2',
-        '3'
     ],
     'Head tube type': [
         '0',
