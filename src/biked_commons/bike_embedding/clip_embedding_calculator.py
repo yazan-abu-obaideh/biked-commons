@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from PIL import Image
 from torchvision import transforms
-from transformers import CLIPProcessor, CLIPTokenizerFast, CLIPModel
+from transformers import CLIPProcessor, CLIPTokenizer, CLIPFeatureExtractor, CLIPModel
 from tqdm import trange
 
 
@@ -59,43 +59,53 @@ from tqdm import trange
 #         embedding_tensor = _MODEL.get_image_features(img_processed)
 #         return embedding_tensor
 
+
 class ClipEmbeddingCalculator:
-    """
-    A batch-friendly CLIP embedding class for text and images.
-    """
-    def __init__(self, device: str = "cuda", batch_size: Optional[int] = None):
-        model_id: str = "openai/clip-vit-base-patch32"
+    def __init__(self, device="cuda", batch_size=None):
+        model_id = "openai/clip-vit-base-patch32"
         self.device     = device
         self.batch_size = batch_size
 
-        # load processor & model once
-        self.processor = CLIPProcessor.from_pretrained(model_id, use_fast=True)
-        self.model     = CLIPModel.from_pretrained(model_id).to(self.device)
+        # load tokenizer + image_processor separately
+        self.tokenizer        = CLIPTokenizer.from_pretrained(model_id, use_fast=True)
+        self.image_processor  = CLIPFeatureExtractor.from_pretrained(model_id)  # or CLIPImageProcessor
+
+        self.model = CLIPModel.from_pretrained(model_id).to(self.device)
         self.model.eval()
 
-    def embed_texts(self, texts: List[str]) -> torch.Tensor:
+    def embed_texts(self, texts):
         all_feats = []
         bs = self.batch_size or len(texts)
         for i in range(0, len(texts), bs):
             chunk = texts[i : i + bs]
-            inputs = self.processor(text=chunk, padding=True, truncation=True, return_tensors="pt"
-            ).to(self.device)
+            enc   = self.tokenizer(
+                        chunk,
+                        padding=True,
+                        truncation=True,
+                        return_tensors="pt"
+                    )
+            inputs = {k: v.to(self.device) for k,v in enc.items()}
             with torch.no_grad():
                 feats = self.model.get_text_features(**inputs)
             all_feats.append(feats)
         return torch.cat(all_feats, dim=0)
 
-    def embed_images(self, images: torch.Tensor) -> torch.Tensor:
+    def embed_images(self, images: torch.Tensor):
         all_feats = []
-        n = images.shape[0]
+        n  = images.shape[0]
         bs = self.batch_size or n
         for i in range(0, n, bs):
             chunk = images[i : i + bs]
-            inputs = self.processor(images=chunk, return_tensors="pt").to(self.device)
+            enc   = self.image_processor(
+                        images=chunk, 
+                        return_tensors="pt"
+                    )
+            inputs = {k: v.to(self.device) for k,v in enc.items()}
             with torch.no_grad():
                 feats = self.model.get_image_features(**inputs)
             all_feats.append(feats)
         return torch.cat(all_feats, dim=0)
+
 
 
 

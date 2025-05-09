@@ -499,13 +499,13 @@ def construct_dataframe_evaluator(evaluation_functions: List[EvaluationFunction]
 
 
 
-def get_standard_evaluations(device) -> List[EvaluationFunction]:
+def get_standard_evaluations(device, aesthetics_mode = "Embedding") -> List[EvaluationFunction]:
 
     StandardEvaluations = [
         UsabilityEvaluator(target_type='cont', device=device),
         AeroEvaluator(device=device),
         ErgonomicsEvaluator(device=device),
-        AestheticsEvaluator(mode="Embedding", batch_size=64, device=device),
+        AestheticsEvaluator(mode=aesthetics_mode, batch_size=64, device=device),
         StructuralEvaluator(device=device),
         ValidationEvaluator(device=device),
         FrameValidityEvaluator(device=device)
