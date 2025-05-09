@@ -4,6 +4,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 import numpy as np
 from torch.autograd import grad
+from diffusers import DDPMScheduler
+from torch.nn import MSELoss
 
 
 from biked_commons.conditioning import conditioning
@@ -307,27 +309,27 @@ def VAE_step(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size
     return report
 
 
-class NoiseScheduler:
-    def __init__(self, num_timesteps, beta_start=0.0001, beta_end=0.02, device="cpu"):
+# class NoiseScheduler:
+#     def __init__(self, num_timesteps, beta_start=0.0001, beta_end=0.02, device="cpu"):
 
-        self.num_timesteps = num_timesteps
-        self.beta_start = beta_start
-        self.beta_end = beta_end
-        self.device = torch.device(device)
+#         self.num_timesteps = num_timesteps
+#         self.beta_start = beta_start
+#         self.beta_end = beta_end
+#         self.device = torch.device(device)
 
-        # Linear beta schedule
-        self.betas = torch.linspace(self.beta_start, self.beta_end, self.num_timesteps, device=self.device)
-        self.alphas = 1.0 - self.betas
-        self.alpha_cumprod = torch.cumprod(self.alphas, dim=0)
-        self.alpha_cumprod_prev = torch.cat([torch.tensor([1.0], device=self.device, dtype=self.betas.dtype), self.alpha_cumprod[:-1]])
+#         # Linear beta schedule
+#         self.betas = torch.linspace(self.beta_start, self.beta_end, self.num_timesteps, device=self.device)
+#         self.alphas = 1.0 - self.betas
+#         self.alpha_cumprod = torch.cumprod(self.alphas, dim=0)
+#         self.alpha_cumprod_prev = torch.cat([torch.tensor([1.0], device=self.device, dtype=self.betas.dtype), self.alpha_cumprod[:-1]])
 
-        self.sqrt_alpha_cumprod = torch.sqrt(self.alpha_cumprod)
-        self.sqrt_one_minus_alpha_cumprod = torch.sqrt(torch.clamp(1.0 - self.alpha_cumprod, min=1e-8))
+#         self.sqrt_alpha_cumprod = torch.sqrt(self.alpha_cumprod)
+#         self.sqrt_one_minus_alpha_cumprod = torch.sqrt(torch.clamp(1.0 - self.alpha_cumprod, min=1e-8))
 
-    def get_variance(self, t):
-        if isinstance(t, torch.Tensor) and t.ndim > 0:  # Batched timesteps
-            return torch.index_select(self.betas, 0, t).to(self.device)
-        return self.betas[t].to(self.device)  # Single timestep
+#     def get_variance(self, t):
+#         if isinstance(t, torch.Tensor) and t.ndim > 0:  # Batched timesteps
+#             return torch.index_select(self.betas, 0, t).to(self.device)
+#         return self.betas[t].to(self.device)  # Single timestep
 
 
 # def DDPM_step_wrapper(scheduler):
@@ -356,38 +358,38 @@ class NoiseScheduler:
 #         return {"loss": loss.item()}
 #     return DDPM_step
 
-def DDPM_step_cond_wrapper(scheduler):
-    def DDPM_step_cond(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size, device, auxiliary_loss_fn):
-        # sample random t and noise
-        t = torch.randint(0, scheduler.num_timesteps, (data_batch.size(0),), device=device)
-        noise = torch.randn_like(data_batch, device=device)
-        # q(x_t | x_0)
-        sqrt_alpha_cumprod_t = scheduler.sqrt_alpha_cumprod[t].unsqueeze(-1).to(device)
-        sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)
-        x_t = sqrt_alpha_cumprod_t * data_batch + sqrt_one_minus_alpha_cumprod_t * noise
 
-        # embed timestep and concat condition
-        t_embedded = t.unsqueeze(-1).float() / scheduler.num_timesteps
+
+def DDPM_step_cond_wrapper(scheduler: DDPMScheduler):
+    def DDPM_step_cond(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size, device, auxiliary_loss_fn):
+        # sample random t
+        t = torch.randint(0, scheduler.config.num_train_timesteps, (data_batch.size(0),), device=device).long()
+
+        # compute x_t using q_sample
+        noise = torch.randn_like(data_batch, device=device)
+        x_t = scheduler.add_noise(data_batch, noise, t)
+
+        # embed timestep and concat with cond
+        t_embedded = t.unsqueeze(-1).float() / scheduler.config.num_train_timesteps
         x_input = torch.cat([x_t, cond_batch, t_embedded], dim=-1)
 
         # predict noise
         noise_pred = D(x_input)
 
-        # standard DDPM loss
-        beta_t = scheduler.betas[t].unsqueeze(-1).to(device)
-        loss_weights = (1 / beta_t) / (1 / beta_t).mean()
-        base_loss = (loss_weights * nn.MSELoss(reduction="none")(noise_pred, noise)).mean()
-
+        # MSE loss with optional weighting (scheduler does not expose beta_t directly)
+        mse = MSELoss(reduction="none")(noise_pred, noise)
+        base_loss = mse.mean()
 
         # reconstruct x0 and compute auxiliary loss
+        alpha_cumprod = scheduler.alphas_cumprod.to(device)
+        sqrt_alpha_cumprod_t = alpha_cumprod[t].sqrt().unsqueeze(-1)
+        sqrt_one_minus_alpha_cumprod_t = (1 - alpha_cumprod[t]).sqrt().unsqueeze(-1)
         x0_pred = (x_t - sqrt_one_minus_alpha_cumprod_t * noise_pred) / sqrt_alpha_cumprod_t
 
-        
         if auxiliary_loss_fn is not None:
-            thresh = int(0.1 * scheduler.num_timesteps)
-            valid = (t < thresh)               # torch.BoolTensor, shape (batch_size,)
+            thresh = int(0.9 * scheduler.config.num_train_timesteps)
+            valid = (t < thresh)
 
-            # 3) only compute aux on that subset
             if valid.any():
                 x0_sub, cond_sub = x0_pred[valid], cond_batch[valid]
                 L_aux, rep = auxiliary_loss_fn(x0_sub, cond_sub)
@@ -395,31 +397,20 @@ def DDPM_step_cond_wrapper(scheduler):
                 L_aux = torch.tensor(0.0, device=device)
                 rep = {}
 
-            # total loss = DDPM + auxiliary
             total_loss = base_loss + L_aux
-
-            report = {
-            "loss": base_loss.item(),
-            "L_aux": L_aux.item(),
-                }
-            report.update(rep)
-        else:
-            total_loss = base_loss
             report = {
                 "loss": base_loss.item(),
+                "L_aux": L_aux.item(),
+                **rep
             }
+        else:
+            total_loss = base_loss
+            report = {"loss": base_loss.item()}
 
         D.zero_grad()
         total_loss.backward()
-
-        # total_norm_D = torch.sqrt(sum(p.grad.norm()**2 for p in D.parameters() if p.grad is not None))
-        # print(f"Gradient norm for D: {total_norm_D.item():.4f}")
-
-        # torch.nn.utils.clip_grad_norm_(G.parameters(), max_norm=20)
-        
         D_opt.step()
-        
-        
+
         return report
 
     return DDPM_step_cond
@@ -449,25 +440,27 @@ class ReusableDataLoader:
 
 def train(D, G, D_opt, G_opt, loader, num_steps, batch_size, noise_dim, train_step_fn, device, auxiliary_loss_fn, auxiliary_loss_delay=0):
     # Loss function
-    
+    D.train()
+    G.train()
     steps_range = trange(num_steps, position=0, leave=True)
+
+    data_batch = loader.get_batch().to(device)
+    noise_batch = torch.randn(batch_size, noise_dim).to(device)
+    cond_batch = sample_continuous(batch_size, split="train", randomize=True).to(device)
+
     for step in steps_range:
-        data_batch = loader.get_batch().to(device)
-        noise_batch = torch.randn(batch_size, noise_dim).to(device)
-        cond_batch = sample_continuous(batch_size, split="train", randomize=True).to(device)
 
         if step < auxiliary_loss_delay*num_steps:
             effective_auxiliary_loss_fn = None
         else:
             effective_auxiliary_loss_fn = auxiliary_loss_fn
-
         report = train_step_fn(D, G, D_opt, G_opt, data_batch, cond_batch, noise_batch, batch_size, device, effective_auxiliary_loss_fn)
         postfix = {key: "{:.4f}".format(value) for key, value in report.items()}
         steps_range.set_postfix(postfix)
     return D, G
 
 
-def get_DDPM_generate_cond(scheduler, data_dim, batch_size=64):
+def get_DDPM_generate_cond(scheduler: DDPMScheduler, data_dim, batch_size=64):
     def DDPM_generate_cond(D, G, cond_batch, latent_dim, device, batch_size=batch_size):
         results = []
         numgen = cond_batch.shape[0]
@@ -477,24 +470,18 @@ def get_DDPM_generate_cond(scheduler, data_dim, batch_size=64):
 
             x = torch.randn(current_batch_size, data_dim).to(device)
 
-            for t in reversed(range(scheduler.num_timesteps)):
-                t_embedded = torch.full((current_batch_size, 1), t, device=device).float() / scheduler.num_timesteps
+            for t in reversed(range(scheduler.config.num_train_timesteps)):
+                t_tensor = torch.full((current_batch_size,), t, dtype=torch.long, device=device)
+                t_embedded = t_tensor.unsqueeze(-1).float() / scheduler.config.num_train_timesteps
                 x_input = torch.cat([x, cond_batch, t_embedded], dim=-1)
 
                 with torch.no_grad():
                     noise_pred = D(x_input)
 
-                beta_t = scheduler.betas[t].to(device)  # Variance (beta_t)
-                alpha_t = scheduler.alphas[t].to(device)  # Current alpha_t (not cumulative)
-                sqrt_alpha_t = torch.sqrt(alpha_t).unsqueeze(-1)  # sqrt(alpha_t)
-                sqrt_one_minus_alpha_cumprod_t = scheduler.sqrt_one_minus_alpha_cumprod[t].unsqueeze(-1).to(device)  # sqrt(1 - cumprod(alpha))
-
-                z = torch.randn_like(x) if t > 0 else 0  # Add noise only if t > 0
-                x = (1 / sqrt_alpha_t) * (x - ((1 - alpha_t) / sqrt_one_minus_alpha_cumprod_t) * noise_pred) + torch.sqrt(beta_t) * z
-
+                x = scheduler.step(model_output=noise_pred, timestep=t_tensor, sample=x).prev_sample
             results.append(x)
 
-        return torch.concat(results, axis=0)
+        return torch.cat(results, dim=0)
     return DDPM_generate_cond
 
 # def get_DDPM_generate_guidance(scheduler, data_dim, guidance_scale=1.0, batch_size=64):
@@ -599,7 +586,7 @@ def train_model(data, model_type, train_params, auxiliary_loss_fn, device):
     #     G_in = 1 #unused
     #     G_out = 1 #unused
     elif model_type in ["DDPM_conditional"]:
-        scheduler = NoiseScheduler(1000, device = device)
+        scheduler = DDPMScheduler(num_train_timesteps=1000)
         train_step = DDPM_step_cond_wrapper(scheduler)
         generate_fn = get_DDPM_generate_cond(scheduler, data_dim, batch_size=batch_size)
         D_in = data_dim + cond_dim + 1

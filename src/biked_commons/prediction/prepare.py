@@ -15,13 +15,6 @@ def prepare_bike_bench():
     data = pd.read_csv(resource_path("datasets/raw_datasets/bike_bench_mixed_modality.csv"), index_col=0)
     data_oh = one_hot_encoding.encode_to_continuous(data)
 
-    #get any rows where any of the column values is more than 25 standard deviations away from the mean
-    def drop_outlier_rows(df, threshold=10):
-        return df[~((df - df.mean()).abs() > (threshold * df.std())).any(axis=1)]
-    
-    data_oh = drop_outlier_rows(data_oh, threshold=25)
-
-
     columns_to_scale = ['Wall thickness Bottom Bracket', 'Wall thickness Top tube',
             'Wall thickness Head tube', 'Wall thickness Down tube',
             'Wall thickness Chain stay', 'Wall thickness Seat stay',
@@ -39,7 +32,19 @@ def prepare_bike_bench():
     data_subset = data_oh[columns_to_scale].copy()
     new_values = data_subset.values * log_normal_samples * 2.0
     data_oh[columns_to_scale] = new_values
+
+    #get any rows where any of the column values is more than 25 standard deviations away from the mean
+    def drop_outlier_rows(df, threshold=10):
+        return df[~((df - df.mean()).abs() > (threshold * df.std())).any(axis=1)]
+    
+    data_oh = drop_outlier_rows(data_oh, threshold=25)
+    print(f"Removed {len(data) - len(data_oh)} outliers from the dataset.")
+
+
     data_oh.to_csv(split_datasets_path("bike_bench.csv"))
+
+    data_subset = data.loc[data_oh.index,:]
+    data_subset.to_csv(split_datasets_path("bike_bench_mixed_modality.csv"))
 
 def prepare_validity():
     df = pd.read_csv(resource_path('datasets/raw_datasets/validity.csv'), index_col=0)
