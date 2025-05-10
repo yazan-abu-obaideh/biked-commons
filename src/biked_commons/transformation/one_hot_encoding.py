@@ -61,6 +61,23 @@ ALL_CATEGORIES = {
     ]
 }
 
+def normalize_category_value(value):
+    """
+    Normalize category values:
+    - Convert float representations of integers (e.g., 1.0) to int strings ('1').
+    - Convert NaN to 'nan'.
+    - Strip whitespace.
+    """
+    if pd.isna(value):
+        return 'nan'
+    elif isinstance(value, (float, int)):
+        # Check if it's an integer-looking float like 1.0
+        if float(value).is_integer():
+            return str(int(value))
+        else:
+            return str(value).strip()
+    else:
+        return str(value).strip()
 
 # columns that are already boolean and should stay in the DF (converted to float on encode)
 BOOLEAN_COLUMNS: List[str] = [
@@ -77,46 +94,41 @@ PREFIX_SEP = " OHCLASS: "
 
 
 def encode_to_continuous(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    One‐hot–encode the categorical columns in ONE_HOT_ENCODED_CLIPS_COLUMNS
-    using prefix "<col> OHCLASS: <category>".  Leave all other columns
-    (including BOOLEAN_COLUMNS) in place, but convert the booleans to floats.
-    This function ensures that all possible categories are included, even if some
-    are missing in the current slice.
-    """
     out = df.copy(deep=True)
 
-    # 1) One-hot encode each categorical column
     for col in ONE_HOT_ENCODED_CLIPS_COLUMNS:
-        # Get all possible categories from the ALL_CATEGORIES dictionary
-        all_categories = ALL_CATEGORIES.get(col, [])
-        
-        # Create dummy variables for the current slice of data
-        dummies = pd.get_dummies(
-            out[col].astype(str),
-            prefix=col,
-            prefix_sep=PREFIX_SEP
-        )
+        # Normalize the column values
+        out[col] = out[col].apply(normalize_category_value)
 
-        # Ensure all categories are represented, even if missing
+        all_categories = set(ALL_CATEGORIES.get(col, []))
+        present_categories = set(out[col].unique())
+
+        unknown_categories = present_categories - all_categories
+        if unknown_categories:
+            print(f"⚠️ Warning: Column '{col}' has unknown values: {unknown_categories}")
+
+        # Proceed with known values only
+        dummies = pd.get_dummies(out[col], prefix=col, prefix_sep=PREFIX_SEP)
+
+        # Ensure all known categories are represented
         for category in all_categories:
             category_col = f"{col}{PREFIX_SEP}{category}"
             if category_col not in dummies.columns:
                 dummies[category_col] = 0
 
-        # Reorder columns to match all possible categories
-        dummies = dummies[sorted(dummies.columns)]
+        # Reorder columns
+        ordered_cols = [f"{col}{PREFIX_SEP}{cat}" for cat in sorted(all_categories)]
+        dummies = dummies.reindex(columns=ordered_cols, fill_value=0)
 
-        # Drop the original column and concatenate the dummies
+        # Replace original column with dummies
         out = pd.concat([out.drop(columns=[col]), dummies], axis=1)
 
-    # 2) Convert boolean columns to floats
+    # Convert booleans to float
     for col in BOOLEAN_COLUMNS:
         if col in out.columns:
             out[col] = out[col].astype(float)
 
-    out = out.astype(np.float32)
-    return out
+    return out.astype(np.float32)
 
 
 

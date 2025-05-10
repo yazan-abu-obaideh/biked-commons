@@ -38,6 +38,7 @@ def evaluate_uncond(result_tens, name, cond_idx, data_columns, device):
 
     main_scores.to_csv(os.path.join(result_dir, "main_scores.csv"), index_label=False, header=False)
     detailed_scores.to_csv(os.path.join(result_dir, "detailed_scores.csv"), index_label=False, header=False)
+    return main_scores, detailed_scores
 
 def evaluate_cond(result_tens, name, data_columns, device):
     condition = get_conditions_10k()
