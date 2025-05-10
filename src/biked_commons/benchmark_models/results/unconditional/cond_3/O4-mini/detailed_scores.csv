@@ -19,32 +19,32 @@ Mean Objective Score: Planar Compliance,12.719553
 Mean Objective Score: Transverse Compliance,41.23741
 Mean Objective Score: Eccentric Compliance,13.53192
 Constraint Violation Rate: Planar Safety Factor,1.0
-Constraint Violation Rate: Eccentric Safety Factor,0.9898580121703854
-Constraint Violation Rate: Saddle height too small,0.08924949290060852
-Constraint Violation Rate: Seat post too short,0.0010141987829614604
+Constraint Violation Rate: Eccentric Safety Factor,0.975557917109458
+Constraint Violation Rate: Saddle height too small,0.14240170031880978
+Constraint Violation Rate: Seat post too short,0.0
 Constraint Violation Rate: Head tube lower extension too great,0.0
-Constraint Violation Rate: Head tube length too great,0.0
+Constraint Violation Rate: Head tube length too great,0.04675876726886291
 Constraint Violation Rate: Certain parameters must be positive,0.0
 Constraint Violation Rate: Chain stay should be greater than wheel radius,0.0
 Constraint Violation Rate: Chain stay should be greater than BB,0.0
 Constraint Violation Rate: Seat stay should be greater than wheel radius,0.0
 Constraint Violation Rate: Down tube must reach head tube,0.0
-Constraint Violation Rate: The pedal shouldn't intersect the front wheel,0.15212981744421908
+Constraint Violation Rate: The pedal shouldn't intersect the front wheel,0.14771519659936239
 Constraint Violation Rate: The crank shouldn't hit the ground when it is in its lower position,0.0
 Constraint Violation Rate: RGB value should be less than 255,0.0
 Constraint Violation Rate: Predicted Frame Validity,0.0
-Mean Constraint Violation Magnitude: Planar Safety Factor,1.1095099449157715
-Mean Constraint Violation Magnitude: Eccentric Safety Factor,0.6893319487571716
-Mean Constraint Violation Magnitude: Saddle height too small,31.082958221435547
-Mean Constraint Violation Magnitude: Seat post too short,0.005070994142442942
+Mean Constraint Violation Magnitude: Planar Safety Factor,1.0658475160598755
+Mean Constraint Violation Magnitude: Eccentric Safety Factor,0.5421999096870422
+Mean Constraint Violation Magnitude: Saddle height too small,38.32305908203125
+Mean Constraint Violation Magnitude: Seat post too short,0.0
 Mean Constraint Violation Magnitude: Head tube lower extension too great,0.0
-Mean Constraint Violation Magnitude: Head tube length too great,0.0
+Mean Constraint Violation Magnitude: Head tube length too great,0.407863974571228
 Mean Constraint Violation Magnitude: Certain parameters must be positive,0.0
 Mean Constraint Violation Magnitude: Chain stay should be greater than wheel radius,0.0
 Mean Constraint Violation Magnitude: Chain stay should be greater than BB,0.0
 Mean Constraint Violation Magnitude: Seat stay should be greater than wheel radius,0.0
 Mean Constraint Violation Magnitude: Down tube must reach head tube,0.0
-Mean Constraint Violation Magnitude: The pedal shouldn't intersect the front wheel,8.95003890991211
+Mean Constraint Violation Magnitude: The pedal shouldn't intersect the front wheel,7.343127250671387
 Mean Constraint Violation Magnitude: The crank shouldn't hit the ground when it is in its lower position,0.0
 Mean Constraint Violation Magnitude: RGB value should be less than 255,0.0
 Mean Constraint Violation Magnitude: Predicted Frame Validity,0.0

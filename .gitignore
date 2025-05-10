@@ -16,4 +16,5 @@ src/biked_commons/benchmark_models/openai_files/generated_files/cond/csvs
 src/biked_commons/benchmark_models/openai_files/generated_files/cond/raw
 src/biked_commons/benchmark_models/openai_files/generated_files/uncond/csvs
 src/biked_commons/benchmark_models/openai_files/generated_files/uncond/raw
+src/biked_commons/benchmark_models/openai_files/generated_files_v0
 src/biked_commons/benchmark_models/openai_files/api_key.txt

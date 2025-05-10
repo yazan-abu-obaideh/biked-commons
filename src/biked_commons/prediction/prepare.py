@@ -32,6 +32,7 @@ def prepare_bike_bench():
     data_subset = data_oh[columns_to_scale].copy()
     new_values = data_subset.values * log_normal_samples * 2.0
     data_oh[columns_to_scale] = new_values
+    data[columns_to_scale] = new_values
 
     #get any rows where any of the column values is more than 25 standard deviations away from the mean
     def drop_outlier_rows(df, threshold=10):

@@ -30,6 +30,7 @@ def evaluate_uncond(result_tens, name, cond_idx, data_columns, device):
     detailed_scorer = construct_scorer(DetailedScores, get_standard_evaluations(device), data_columns)
 
     main_scores = main_scorer(result_tens, condition)
+    
     detailed_scores = detailed_scorer(result_tens, condition)
 
     # Save result_tens as .pt
@@ -40,8 +41,10 @@ def evaluate_uncond(result_tens, name, cond_idx, data_columns, device):
     detailed_scores.to_csv(os.path.join(result_dir, "detailed_scores.csv"), index_label=False, header=False)
     return main_scores, detailed_scores
 
-def evaluate_cond(result_tens, name, data_columns, device):
+def evaluate_cond(result_tens, name, data_columns, device, indices = range(10000)):
     condition = get_conditions_10k()
+
+    condition = {"Rider": condition["Rider"][indices], "Use Case": condition["Use Case"][indices], "Embedding": condition["Embedding"][indices]}
 
     result_dir = os.path.join("results", "conditional", name)
     os.makedirs(result_dir, exist_ok=True)
