@@ -73,9 +73,41 @@ def create_score_report_conditional():
     result_dir = os.path.join("results", "conditional")
     for name in os.listdir(result_dir):
         if os.path.isdir(os.path.join(result_dir, name)):
-            print(f"Creating score report for {name}")
             main_scores = pd.read_csv(os.path.join(result_dir, name, "main_scores.csv"), header=None)
-            #set 
+            main_scores.columns = ["Metric", "Score"]
+            main_scores["Model"] = name
             all_scores.append(main_scores)
     all_scores = pd.concat(all_scores, axis=0)
+    #make metric names the three columns, make models the rows
+    all_scores = all_scores.pivot(index="Model", columns="Metric", values="Score")
+    #drop the index name and the column name
+    all_scores.columns.name = None
+    all_scores.index.name = None
+    
+    return all_scores
 
+def create_score_report_unconditional():
+    """
+    Looks through the results folder and creates a score report for each unconditional result.
+    """
+    all_scores = []
+    result_dir = os.path.join("results", "unconditional")
+    for i in range(10):
+        c_dir = os.path.join(result_dir, f"cond_{i}")
+        for name in os.listdir(c_dir):
+            dirname = os.path.join(c_dir, name)
+            if os.path.isdir(dirname):
+                main_scores = pd.read_csv(os.path.join(dirname, "main_scores.csv"), header=None)
+                main_scores.columns = ["Metric", "Score"]
+                main_scores["Model"] = name
+                main_scores["Condition"] = i
+                all_scores.append(main_scores)
+    all_scores = pd.concat(all_scores, axis=0)
+    #average over condition 
+    all_scores = all_scores.groupby(["Model", "Metric"]).mean().reset_index()
+    #make metric names the three columns, make models the rows
+    all_scores = all_scores.pivot(index="Model", columns="Metric", values="Score")
+    #drop the index name and the column name
+    all_scores.columns.name = None
+    all_scores.index.name = None
+    return all_scores
