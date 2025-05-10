@@ -12,3 +12,5 @@ src/resources/datasets/split_datasets/CLIP_X_train.csv
 src/resources/datasets/split_datasets/CLIP_Y_train.npy
 src/resources/bike_bench_rendering
 src/resources/synthetic_data_rendering
+src/biked_commons/benchmark_models/openai_files/generated_files/csvs
+src/biked_commons/benchmark_models/openai_files/generated_files/raw

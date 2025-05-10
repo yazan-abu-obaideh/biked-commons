@@ -1,5 +1,6 @@
 import os
 import torch
+import pandas as pd
 from biked_commons.design_evaluation.scoring import construct_scorer, MainScores, DetailedScores
 from biked_commons.design_evaluation.design_evaluation import get_standard_evaluations
 from biked_commons.conditioning import conditioning
@@ -58,3 +59,19 @@ def evaluate_cond(result_tens, name, data_columns, device):
     detailed_scores.to_csv(os.path.join(result_dir, "detailed_scores.csv"), index_label=False, header=False)
 
     return main_scores, detailed_scores
+
+
+def create_score_report_conditional():
+    """
+    Looks through the results folder and creates a score report for each conditional result.
+    """
+    all_scores = []
+    result_dir = os.path.join("results", "conditional")
+    for name in os.listdir(result_dir):
+        if os.path.isdir(os.path.join(result_dir, name)):
+            print(f"Creating score report for {name}")
+            main_scores = pd.read_csv(os.path.join(result_dir, name, "main_scores.csv"), header=None)
+            #set 
+            all_scores.append(main_scores)
+    all_scores = pd.concat(all_scores, axis=0)
+

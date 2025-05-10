@@ -4,8 +4,8 @@ from typing import List, Optional
 import numpy as np
 import torch
 from PIL import Image
-from torchvision import transforms
-from transformers import CLIPProcessor, CLIPTokenizer, CLIPFeatureExtractor, CLIPModel
+# from torchvision import transforms
+from transformers import CLIPTokenizer, CLIPImageProcessor, CLIPModel
 from tqdm import trange
 
 
@@ -60,20 +60,26 @@ from tqdm import trange
 #         return embedding_tensor
 
 
+
+
 class ClipEmbeddingCalculator:
-    def __init__(self, device="cuda", batch_size=None):
+    """
+    A batch-friendly CLIP embedding class for text and images.
+    """
+    def __init__(self, device: str = "cuda", batch_size: Optional[int] = None):
         model_id = "openai/clip-vit-base-patch32"
         self.device     = device
         self.batch_size = batch_size
 
-        # load tokenizer + image_processor separately
-        self.tokenizer        = CLIPTokenizer.from_pretrained(model_id, use_fast=True)
-        self.image_processor  = CLIPFeatureExtractor.from_pretrained(model_id)  # or CLIPImageProcessor
+        # text tokenizer (fast Rust version)
+        self.tokenizer       = CLIPTokenizer.from_pretrained(model_id, use_fast=True)
+        # new image processor (replaces the deprecated FeatureExtractor)
+        self.image_processor = CLIPImageProcessor.from_pretrained(model_id)
 
         self.model = CLIPModel.from_pretrained(model_id).to(self.device)
         self.model.eval()
 
-    def embed_texts(self, texts):
+    def embed_texts(self, texts: List[str]) -> torch.Tensor:
         all_feats = []
         bs = self.batch_size or len(texts)
         for i in range(0, len(texts), bs):
@@ -90,7 +96,7 @@ class ClipEmbeddingCalculator:
             all_feats.append(feats)
         return torch.cat(all_feats, dim=0)
 
-    def embed_images(self, images: torch.Tensor):
+    def embed_images(self, images: torch.Tensor) -> torch.Tensor:
         all_feats = []
         n  = images.shape[0]
         bs = self.batch_size or n
@@ -109,16 +115,16 @@ class ClipEmbeddingCalculator:
 
 
 
-def get_augmented_views_gpu(images_tensor):
-    transform = transforms.RandomApply([
-                                        transforms.RandomHorizontalFlip(),
-                                        transforms.RandomAdjustSharpness(0.2), 
-                                        transforms.RandomAdjustSharpness(2), 
-                                        transforms.RandomPerspective(fill=(0, 0, 0)),
-                                        transforms.RandomRotation(degrees = 45, fill= (0, 0, 0)), 
-                                       #  transforms.ColorJitter(brightness=0.1, contrast = 0.1, saturation=0.1, hue=0.0),
-                                       ],p=1)
-    res = transform(images_tensor.cuda()).cpu()
-    return res
+# def get_augmented_views_gpu(images_tensor):
+#     transform = transforms.RandomApply([
+#                                         transforms.RandomHorizontalFlip(),
+#                                         transforms.RandomAdjustSharpness(0.2), 
+#                                         transforms.RandomAdjustSharpness(2), 
+#                                         transforms.RandomPerspective(fill=(0, 0, 0)),
+#                                         transforms.RandomRotation(degrees = 45, fill= (0, 0, 0)), 
+#                                        #  transforms.ColorJitter(brightness=0.1, contrast = 0.1, saturation=0.1, hue=0.0),
+#                                        ],p=1)
+#     res = transform(images_tensor.cuda()).cpu()
+#     return res
 
 

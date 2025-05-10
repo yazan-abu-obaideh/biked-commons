@@ -44,6 +44,9 @@ def prepare_bike_bench():
     data_oh.to_csv(split_datasets_path("bike_bench.csv"))
 
     data_subset = data.loc[data_oh.index,:]
+
+    #convert column BELTorCHAIN to bool
+    data_subset['BELTorCHAIN'] = data_subset['BELTorCHAIN'].astype(bool)
     data_subset.to_csv(split_datasets_path("bike_bench_mixed_modality.csv"))
 
 def prepare_validity():
