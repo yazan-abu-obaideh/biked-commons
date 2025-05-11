@@ -19,32 +19,32 @@ Mean Objective Score: Planar Compliance,12.719553
 Mean Objective Score: Transverse Compliance,41.23741
 Mean Objective Score: Eccentric Compliance,13.53192
 Constraint Violation Rate: Planar Safety Factor,1.0
-Constraint Violation Rate: Eccentric Safety Factor,1.0
-Constraint Violation Rate: Saddle height too small,0.038
-Constraint Violation Rate: Seat post too short,0.043
+Constraint Violation Rate: Eccentric Safety Factor,0.999
+Constraint Violation Rate: Saddle height too small,0.049
+Constraint Violation Rate: Seat post too short,0.049
 Constraint Violation Rate: Head tube lower extension too great,0.0
-Constraint Violation Rate: Head tube length too great,0.009
-Constraint Violation Rate: Certain parameters must be positive,0.002
-Constraint Violation Rate: Chain stay should be greater than wheel radius,0.005
+Constraint Violation Rate: Head tube length too great,0.002
+Constraint Violation Rate: Certain parameters must be positive,0.0
+Constraint Violation Rate: Chain stay should be greater than wheel radius,0.001
 Constraint Violation Rate: Chain stay should be greater than BB,0.0
-Constraint Violation Rate: Seat stay should be greater than wheel radius,0.005
+Constraint Violation Rate: Seat stay should be greater than wheel radius,0.002
 Constraint Violation Rate: Down tube must reach head tube,0.002
-Constraint Violation Rate: The pedal shouldn't intersect the front wheel,0.13
-Constraint Violation Rate: The crank shouldn't hit the ground when it is in its lower position,0.001
+Constraint Violation Rate: The pedal shouldn't intersect the front wheel,0.111
+Constraint Violation Rate: The crank shouldn't hit the ground when it is in its lower position,0.0
 Constraint Violation Rate: RGB value should be less than 255,0.0
-Constraint Violation Rate: Predicted Frame Validity,0.005
-Mean Constraint Violation Magnitude: Planar Safety Factor,1.0596262216567993
-Mean Constraint Violation Magnitude: Eccentric Safety Factor,0.8470606803894043
-Mean Constraint Violation Magnitude: Saddle height too small,2.501713514328003
-Mean Constraint Violation Magnitude: Seat post too short,4.914452075958252
+Constraint Violation Rate: Predicted Frame Validity,0.0
+Mean Constraint Violation Magnitude: Planar Safety Factor,1.1132235527038574
+Mean Constraint Violation Magnitude: Eccentric Safety Factor,0.909737229347229
+Mean Constraint Violation Magnitude: Saddle height too small,2.471724033355713
+Mean Constraint Violation Magnitude: Seat post too short,3.0393922328948975
 Mean Constraint Violation Magnitude: Head tube lower extension too great,0.0
-Mean Constraint Violation Magnitude: Head tube length too great,0.13736678659915924
-Mean Constraint Violation Magnitude: Certain parameters must be positive,0.00947877112776041
-Mean Constraint Violation Magnitude: Chain stay should be greater than wheel radius,0.554611325263977
+Mean Constraint Violation Magnitude: Head tube length too great,0.0035383529029786587
+Mean Constraint Violation Magnitude: Certain parameters must be positive,0.0
+Mean Constraint Violation Magnitude: Chain stay should be greater than wheel radius,0.04023870825767517
 Mean Constraint Violation Magnitude: Chain stay should be greater than BB,0.0
-Mean Constraint Violation Magnitude: Seat stay should be greater than wheel radius,0.35976070165634155
-Mean Constraint Violation Magnitude: Down tube must reach head tube,0.07168698310852051
-Mean Constraint Violation Magnitude: The pedal shouldn't intersect the front wheel,4.288578987121582
-Mean Constraint Violation Magnitude: The crank shouldn't hit the ground when it is in its lower position,0.00032971191103570163
+Mean Constraint Violation Magnitude: Seat stay should be greater than wheel radius,0.0011985168093815446
+Mean Constraint Violation Magnitude: Down tube must reach head tube,0.1638106107711792
+Mean Constraint Violation Magnitude: The pedal shouldn't intersect the front wheel,4.336149215698242
+Mean Constraint Violation Magnitude: The crank shouldn't hit the ground when it is in its lower position,0.0
 Mean Constraint Violation Magnitude: RGB value should be less than 255,0.0
-Mean Constraint Violation Magnitude: Predicted Frame Validity,0.0019972349982708693
+Mean Constraint Violation Magnitude: Predicted Frame Validity,0.0
