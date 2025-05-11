@@ -490,6 +490,8 @@ def get_DDPM_generate_guided(scheduler: DDPMScheduler, data_dim, auxiliary_loss_
         results = []
         numgen = cond_batch.shape[0]
 
+        num_guided_timesteps = int(0.5 * scheduler.config.num_train_timesteps)
+
         for start_idx in range(0, numgen, batch_size):
             end_idx = min(start_idx + batch_size, numgen)
             current_batch_size = end_idx - start_idx
@@ -515,7 +517,7 @@ def get_DDPM_generate_guided(scheduler: DDPMScheduler, data_dim, auxiliary_loss_
 
                     aux_loss, _ = auxiliary_loss_fn(x0_pred, cond_batch)
                     aux_loss.backward(retain_graph=True)
-                    grad = x.grad
+                    grad = x.grad / num_guided_timesteps
 
                     # Update x based on this local gradient only
                     x = (x - grad).detach().requires_grad_(True)
@@ -589,7 +591,7 @@ def train_model(data, model_type, train_params, auxiliary_loss_fn, cond_idx, dev
         G_in = noise_dim + cond_dim
         G_out = data_dim
     elif model_type in ["DDPM_guided"]:
-        scheduler = DDPMScheduler(num_train_timesteps=1000)
+        scheduler = DDPMScheduler(num_train_timesteps=100)
         train_step = DDPM_step_wrapper(scheduler)
         generate_fn = get_DDPM_generate_guided(scheduler, data_dim, auxiliary_loss_fn, batch_size=batch_size)
         D_in = data_dim + 1
